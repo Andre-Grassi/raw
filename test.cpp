@@ -12,16 +12,13 @@ struct teste
     uint8_t sequencia : 5;
     uint8_t tipo : 4;
     uint8_t checksum;
-    uint8_t *data;
 };
 
 int main()
 {
-
-    uint8_t buffer_data[1] = {0b11111111};
-    size_t tamanho_buffer = sizeof(buffer_data) / sizeof(buffer_data[0]);
+    uint8_t buffer_data[100] = {55};
     // Coloca cada campo da struct teste dentro de um buffer
-    teste meu_pacote = {0b01111110, 0b1111111, 0b00000, 0b1111, 0b00000000, buffer_data};
+    teste meu_pacote = {0b01111110, 0b1111111, 0b00000, 0b1111, 0b00000000};
 
     uint32_t pacote_em_32bits = 0;
 
@@ -38,19 +35,6 @@ int main()
         printf("%d", (pacote_em_32bits >> i) & 1);
     }
     printf("\n");
-
-    uint8_t *pacote_final = new uint8_t[4 + tamanho_buffer];
-    *pacote_final |= pacote_em_32bits;
-
-    // Imprime os bits do pacote final
-    printf("Pacote final: ");
-    for (size_t i = 0; i < 4 + tamanho_buffer; ++i)
-    {
-        for (int j = 7; j >= 0; --j)
-        {
-            printf("%d", (pacote_final[i] >> j) & 1);
-        }
-    }
 
     return 0;
 }

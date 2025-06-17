@@ -7,6 +7,30 @@
 
 #include "network.hpp"
 
+Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
+{
+    this->size = size;
+    this->sequence = sequence;
+    this->type = type;
+    this->data = data;
+    this->checksum = 0;
+}
+
+// Parity word checksum
+void Message::calculate_checksum()
+{
+    checksum = 0;
+    checksum ^= start_delimiter;
+    checksum ^= size;
+    checksum ^= sequence;
+    checksum ^= type;
+
+    for (uint8_t i = 0; i < size; ++i)
+    {
+        checksum ^= data[i];
+    }
+}
+
 int cria_raw_socket(char *nome_interface_rede)
 {
     // Cria arquivo para o socket sem qualquer protocolo
@@ -42,4 +66,27 @@ int cria_raw_socket(char *nome_interface_rede)
     }
 
     return soquete;
+}
+
+Network::Network(char *my_interface_name, char *other_interface_name)
+{
+    my_socket.socket_fd = cria_raw_socket(my_interface_name);
+    my_socket.interface_name = my_interface_name;
+
+    other_socket.socket_fd = cria_raw_socket(other_interface_name);
+    other_socket.interface_name = other_interface_name;
+}
+
+uint Network::send_message(Message *message)
+{
+    // Empacota os metadados em uma variável de 32 bits
+    uint32_t metadata_package = 0;
+
+    metadata_package |= (uint32_t)message->start_delimiter << 24;
+    metadata_package |= (uint32_t)message->size << 17;
+    metadata_package |= (uint32_t)message->sequence << 12;
+    metadata_package |= (uint32_t)message->type << 8;
+    metadata_package |= (uint32_t)message->checksum;
+
+    return 1;
 }
