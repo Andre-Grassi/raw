@@ -14,7 +14,7 @@ Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
     this->sequence = sequence;
     this->type = type;
     this->data = data;
-    this->checksum = 0;
+    calculate_checksum();
 }
 
 // Parity word checksum
@@ -150,10 +150,10 @@ Message *Network::receive_message()
     }
 
     uint8_t start_delimiter = metadata_package & 0xFF;
-    uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
-    uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
-    uint8_t type = (metadata_package >> 20) & 0x0F;     // 4 bits
-    uint8_t checksum = (metadata_package >> 24) & 0xFF; // 8 bits
+    uint8_t size = (metadata_package >> 8) & 0x7F;               // 7 bits
+    uint8_t sequence = (metadata_package >> 15) & 0x1F;          // 5 bits
+    uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits
+    uint8_t checksum_original = (metadata_package >> 24) & 0xFF; // 8 bits
 
     uint8_t *data = new uint8_t[size];
 
@@ -204,7 +204,7 @@ Message *Network::receive_message()
     printf("\nChecksum: ");
     for (int i = 7; i >= 0; --i)
     {
-        printf("%d", (checksum >> i) & 1);
+        printf("%d", (checksum_original >> i) & 1);
     }
     printf("\n");
 
@@ -223,6 +223,15 @@ Message *Network::receive_message()
 
     // Cria e retorna a mensagem recebida
     Message *message = new Message(size, sequence, type, data);
+
+    // Valida o checksum recebido com o calculado
+    if (checksum_original != message->checksum)
+    {
+        fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
+        delete[] received_package;
+        delete message;
+        return nullptr; // Retorna nullptr se o checksum não bater
+    }
 
     return message;
 }
