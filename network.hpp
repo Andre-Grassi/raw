@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #define METADATA_SIZE 4
+#define MAX_DATA_SIZE 127
 #define VERBOSE
 
 enum message_type
