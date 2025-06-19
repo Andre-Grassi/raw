@@ -43,7 +43,7 @@ int cria_raw_socket(char *nome_interface_rede)
 
     int ifindex = if_nametoindex(nome_interface_rede);
 
-    struct sockaddr_ll endereco = {0};
+    struct sockaddr_ll endereco;
     endereco.sll_family = AF_PACKET;
     endereco.sll_protocol = htons(ETH_P_ALL);
     endereco.sll_ifindex = ifindex;
@@ -54,7 +54,7 @@ int cria_raw_socket(char *nome_interface_rede)
         exit(-1);
     }
 
-    struct packet_mreq mr = {0};
+    struct packet_mreq mr;
     mr.mr_ifindex = ifindex;
     mr.mr_type = PACKET_MR_PROMISC;
     // Não joga fora o que identifica como lixo: Modo promíscuo
@@ -77,16 +77,44 @@ Network::Network(char *my_interface_name, char *other_interface_name)
     other_socket.interface_name = other_interface_name;
 }
 
-uint Network::send_message(Message *message)
+uint32_t Network::send_message(Message *message)
 {
-    // Empacota os metadados em uma variável de 32 bits
     uint32_t metadata_package = 0;
 
-    metadata_package |= (uint32_t)message->start_delimiter << 24;
-    metadata_package |= (uint32_t)message->size << 17;
-    metadata_package |= (uint32_t)message->sequence << 12;
-    metadata_package |= (uint32_t)message->type << 8;
-    metadata_package |= (uint32_t)message->checksum;
+    metadata_package |= (uint32_t)message->start_delimiter;
+    metadata_package |= (uint32_t)message->size << 8;
+    metadata_package |= (uint32_t)message->sequence << 15;
+    metadata_package |= (uint32_t)message->type << 20;
+    metadata_package |= (uint32_t)message->checksum << 24;
 
-    return 1;
+    uint8_t *final_package = new uint8_t[METADATA_SIZE + message->size];
+
+    // Copia os 4 bytes do pacote em 32 bits para o pacote final
+    for (size_t i = 0; i < METADATA_SIZE; i++)
+    {
+        final_package[i] = (metadata_package >> (i * 8)) & 0xFF;
+    }
+
+    // Copia os dados do buffer para o pacote final
+    for (size_t i = 0; i < message->size; i++)
+    {
+        final_package[i + METADATA_SIZE] = message->data[i];
+    }
+
+#ifdef VERBOSE
+    // Imprime os bits do pacote final
+    for (size_t i = 0; i < (uint8_t)(4 + message->size); i++)
+    {
+        printf("Byte %zu: ", i);
+        for (int j = 7; j >= 0; --j)
+        {
+            printf("%d", (final_package[i] >> j) & 1);
+        }
+        printf("\n");
+    }
+#endif
+
+    uint32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size, 0);
+
+    return sent_bytes;
 }
