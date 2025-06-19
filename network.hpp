@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define METADATA_SIZE 4
+#define VERBOSE
+
 enum message_type
 {
     ACK,
@@ -54,6 +57,6 @@ public:
 
     Network(char *my_interface_name, char *other_interface_name);
 
-    uint send_message(Message *message);
+    uint32_t send_message(Message *message);
     Message *receive_message();
 };
