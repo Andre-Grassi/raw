@@ -4,6 +4,7 @@
 #include <net/if.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <cstring>
 
 #include "network.hpp"
 
@@ -87,7 +88,8 @@ uint32_t Network::send_message(Message *message)
     metadata_package |= (uint32_t)message->type << 20;
     metadata_package |= (uint32_t)message->checksum << 24;
 
-    uint8_t *final_package = new uint8_t[METADATA_SIZE + message->size];
+    uint8_t *final_package = new uint8_t[METADATA_SIZE + message->size + 10];
+    std::memset(final_package, 0, METADATA_SIZE + message->size + 10);
 
     // Copia os 4 bytes do pacote em 32 bits para o pacote final
     for (size_t i = 0; i < METADATA_SIZE; i++)
@@ -103,7 +105,7 @@ uint32_t Network::send_message(Message *message)
 
 #ifdef VERBOSE
     // Imprime os bits do pacote final
-    for (size_t i = 0; i < (uint8_t)(4 + message->size); i++)
+    for (size_t i = 0; i < (uint8_t)(METADATA_SIZE + message->size); i++)
     {
         printf("Byte %zu: ", i);
         for (int j = 7; j >= 0; --j)
@@ -114,7 +116,50 @@ uint32_t Network::send_message(Message *message)
     }
 #endif
 
-    uint32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size, 0);
+    uint32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
 
     return sent_bytes;
+}
+
+Message *Network::receive_message()
+{
+    uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
+
+    ssize_t received_bytes = recv(this->other_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
+
+    if (received_bytes < 0)
+    {
+        perror("Erro ao receber mensagem");
+        delete[] received_package;
+        return nullptr;
+    }
+
+    if (received_bytes < METADATA_SIZE)
+    {
+        fprintf(stderr, "Pacote recebido incompleto.\n");
+        delete[] received_package;
+        return nullptr;
+    }
+
+    // Extrai os metadados do pacote recebido
+    uint32_t metadata_package = 0;
+
+    for (size_t i = 0; i < METADATA_SIZE; i++)
+    {
+        metadata_package |= (received_package[i] << (i * 8));
+    }
+
+    // Imprime os bits do metadata_package
+#ifdef VERBOSE
+    printf("Metadata Package: ");
+    for (int i = 0; i < 32; i++)
+    {
+        if (i % 8 == 0)
+            printf("\nByte %d: ", i / 8);
+        printf("%d", (metadata_package >> i) & 1);
+    }
+    printf("\n");
+#endif
+
+    return nullptr;
 }
