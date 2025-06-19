@@ -149,6 +149,18 @@ Message *Network::receive_message()
         metadata_package |= (received_package[i] << (i * 8));
     }
 
+    uint8_t start_delimiter = metadata_package & 0xFF;
+    uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
+    uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
+    uint8_t type = (metadata_package >> 20) & 0x0F;     // 4 bits
+    uint8_t checksum = (metadata_package >> 24) & 0xFF; // 8 bits
+
+    uint8_t *data = new uint8_t[size];
+
+    // Copia os dados do pacote recebido para o buffer de dados
+    for (size_t i = 0; i < size; i++)
+        data[i] = received_package[i + METADATA_SIZE];
+
     // Imprime os bits do metadata_package
 #ifdef VERBOSE
     printf("Metadata Package: ");
@@ -159,7 +171,58 @@ Message *Network::receive_message()
         printf("%d", (metadata_package >> i) & 1);
     }
     printf("\n");
+
+    // Imprime bits de start_delimiter
+    printf("Start Delimiter: ");
+    for (int i = 7; i >= 0; --i)
+    {
+        printf("%d", (start_delimiter >> i) & 1);
+    }
+
+    // Imprime bits de size
+    printf("\nSize: ");
+    for (int i = 6; i >= 0; --i)
+    {
+        printf("%d", (size >> i) & 1);
+    }
+
+    // Imprime bits de sequence
+    printf("\nSequence: ");
+    for (int i = 4; i >= 0; --i)
+    {
+        printf("%d", (sequence >> i) & 1);
+    }
+
+    // Imprime bits de type
+    printf("\nType: ");
+    for (int i = 3; i >= 0; --i)
+    {
+        printf("%d", (type >> i) & 1);
+    }
+
+    // Imprime bits de checksum
+    printf("\nChecksum: ");
+    for (int i = 7; i >= 0; --i)
+    {
+        printf("%d", (checksum >> i) & 1);
+    }
+    printf("\n");
+
+    // Imprime os bits do buffer de dados byte a byte
+    printf("Data: ");
+    for (size_t i = 0; i < size; i++)
+    {
+        printf("\nByte %zu: ", i);
+        for (int j = 7; j >= 0; --j)
+        {
+            printf("%d", (data[i] >> j) & 1);
+        }
+    }
+    printf("\n");
 #endif
 
-    return nullptr;
+    // Cria e retorna a mensagem recebida
+    Message *message = new Message(size, sequence, type, data);
+
+    return message;
 }
