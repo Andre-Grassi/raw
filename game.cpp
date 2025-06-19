@@ -25,31 +25,33 @@ int main()
 
     uint32_t pacote_em_32bits = 0;
 
-    pacote_em_32bits |= (uint32_t)meu_pacote.marcador_inicio << 24;
-    pacote_em_32bits |= (uint32_t)meu_pacote.tamanho << 17;
-    pacote_em_32bits |= (uint32_t)meu_pacote.sequencia << 12;
-    pacote_em_32bits |= (uint32_t)meu_pacote.tipo << 8;
-    pacote_em_32bits |= (uint32_t)meu_pacote.checksum;
-
-    // Imprime os bits do pacote em 32 bits
-    printf("Pacote em 32 bits: ");
-    for (int i = 31; i >= 0; --i)
-    {
-        printf("%d", (pacote_em_32bits >> i) & 1);
-    }
-    printf("\n");
+    pacote_em_32bits |= (uint32_t)meu_pacote.marcador_inicio;
+    pacote_em_32bits |= (uint32_t)meu_pacote.tamanho << 8;
+    pacote_em_32bits |= (uint32_t)meu_pacote.sequencia << 15;
+    pacote_em_32bits |= (uint32_t)meu_pacote.tipo << 20;
+    pacote_em_32bits |= (uint32_t)meu_pacote.checksum << 24;
 
     uint8_t *pacote_final = new uint8_t[4 + tamanho_buffer];
-    *pacote_final |= pacote_em_32bits;
+    // Copia os 4 bytes do pacote em 32 bits para o pacote final
+    for (int i = 0; i < 4; ++i)
+    {
+        pacote_final[i] = (pacote_em_32bits >> (i * 8)) & 0xFF;
+    }
+    // Copia os dados do buffer para o pacote final
+    for (size_t i = 0; i < tamanho_buffer; ++i)
+    {
+        pacote_final[4 + i] = buffer_data[i];
+    }
 
     // Imprime os bits do pacote final
-    printf("Pacote final: ");
     for (size_t i = 0; i < 4 + tamanho_buffer; ++i)
     {
+        printf("Byte %zu: ", i);
         for (int j = 7; j >= 0; --j)
         {
             printf("%d", (pacote_final[i] >> j) & 1);
         }
+        printf("\n");
     }
 
     return 0;
