@@ -1,20 +1,24 @@
 LIB = -lm
 
 # Own modules created for the game (name without extension)
-MODULES = network
+MODULES = network game
 
 CFLAGS = -g -Wall -Wextra
 
-all: game
+all: main
 
-game: game.o object_files
-	g++ -o game game.o $(MODULES:=.o) $(LIB)
+main: main.o object_files
+	g++ -o main main.o $(MODULES:=.o) $(LIB)
 
-game.o: game.cpp
-	g++ -c $(CFLAGS) game.cpp
+main.o: main.cpp
+	g++ -c $(CFLAGS) main.cpp
 
 object_files: $(MODULES:=.cpp) $(MODULES:=.hpp)
 	g++ -c $(CFLAGS) $(MODULES:=.cpp)
 
+send_listen: object_files
+	g++ -o send send.cpp $(MODULES:=.o) $(LIB)
+	g++ -o listen listen.cpp $(MODULES:=.o) $(LIB)
+
 clean:
-	rm -f *.o game
+	rm -f *.o main send listen 
