@@ -7,11 +7,15 @@ CFLAGS = -g -Wall -Wextra
 
 all: main
 
-main: main.o object_files
-	g++ -o main main.o $(MODULES:=.o) $(LIB)
+main: player.o server.o object_files
+	g++ -o player player.o $(MODULES:=.o) $(LIB)
+	g++ -o server server.o $(MODULES:=.o) $(LIB)
 
-main.o: main.cpp
-	g++ -c $(CFLAGS) main.cpp
+player.o: player.cpp
+	g++ -c $(CFLAGS) player.cpp
+
+server.o: server.cpp
+	g++ -c $(CFLAGS) server.cpp
 
 object_files: $(MODULES:=.cpp) $(MODULES:=.hpp)
 	g++ -c $(CFLAGS) $(MODULES:=.cpp)
@@ -21,4 +25,4 @@ send_listen: object_files
 	g++ -o listen listen.cpp $(MODULES:=.o) $(LIB)
 
 clean:
-	rm -f *.o main send listen 
+	rm -f *.o player server send listen 
