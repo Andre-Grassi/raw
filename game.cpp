@@ -65,3 +65,47 @@ void Map::print()
         printf("\n");
     }
 }
+
+bool Map::move_player(char movement)
+{
+    bool valid_move = false;
+    Coordinate old_position = player_position;
+
+    switch (movement)
+    {
+    case 'w': // Cima
+        if (player_position.y < GRID_SIDE - 1)
+        {
+            player_position.y++;
+            valid_move = true;
+        }
+        break;
+    case 's': // Baixo
+        if (player_position.y > 0)
+        {
+            player_position.y--;
+            valid_move = true;
+        }
+        break;
+    case 'a': // Esquerda
+        if (player_position.x > 0)
+        {
+            player_position.x--;
+            valid_move = true;
+        }
+        break;
+    case 'd': // Direita
+        if (player_position.x < GRID_SIDE - 1)
+        {
+            player_position.x++;
+            valid_move = true;
+        }
+        break;
+    }
+
+    if (valid_move)
+    {
+        grid[player_position.x][player_position.y] = PLAYER;
+        grid[old_position.x][old_position.y] = VISITED;
+    }
+}
