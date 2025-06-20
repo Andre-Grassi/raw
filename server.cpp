@@ -4,6 +4,8 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
+#include <cmath>
+#include <string.h>
 
 int main(int argc, char *argv[])
 {
@@ -21,6 +23,7 @@ int main(int argc, char *argv[])
     uint8_t sequence = 0;
     while (!end)
     {
+        uint8_t treasure_index;
         if (!is_sending_treasure)
         {
             // Server logic: wait for player move
@@ -35,14 +38,32 @@ int main(int argc, char *argv[])
                 case RIGHT:
                 {
                     map.move_player((message_type)received_message->type);
-                    printf("Player moved. Sending ACK.\n");
-                    map.print();
-                    Message ack_message = Message(0, sequence, ACK, NULL);
-                    int32_t sent_bytes = net.send_message(&ack_message);
-                    if (sent_bytes == -1)
-                        perror("Error sending ACK");
-                    else
-                        sequence++;
+
+                    // Testa se player encontrou um tesouro
+                    for (int i = 0; i < NUM_TREASURES; ++i)
+                    {
+                        if (map.player_position == map.treasures[i])
+                        {
+                            is_sending_treasure = true;
+                            treasure_index = i;
+                            printf("Player found a treasure at (%d, %d)!\n", map.treasures[i].x, map.treasures[i].y);
+                            break;
+                        }
+                    }
+
+                    if (!is_sending_treasure)
+                    {
+                        printf("Player moved. Sending ACK.\n");
+                        map.print();
+                        Message ack_message = Message(0, sequence, ACK, NULL);
+                        int32_t sent_bytes = net.send_message(&ack_message);
+                        if (sent_bytes == -1)
+                            perror("Error sending ACK");
+                        else
+                            sequence++;
+                        break;
+                    }
+
                     break;
                 }
                 default:
@@ -56,6 +77,85 @@ int main(int argc, char *argv[])
                 received_message = nullptr;
 
                 delete received_message;
+            }
+        }
+        if (is_sending_treasure)
+        {
+            // Server logic: send treasure to player
+            printf("Sending treasure to player...\n");
+
+            std::string filename = std::to_string(treasure_index + 1);
+            // Convert filename to uint8_t array
+            uint8_t *filename_data = new uint8_t[filename.size()];
+            std::copy(filename.begin(), filename.end(), filename_data);
+            Message ack_treasure = Message(filename.size(), sequence, TXT_ACK_NAME, filename_data);
+            int32_t sent_bytes = net.send_message(&ack_treasure);
+            if (sent_bytes == -1)
+                perror("Error sending ack treasure");
+            else
+                sequence++;
+
+            // Espera ACK do jogador
+            Message *received_message = net.receive_message();
+            if (received_message)
+            {
+                if (received_message->type == ACK)
+                {
+                    // Obtém arquivo do tesouro
+                    std::string treasure_file = TREASURE_DIR + filename + ".txt";
+                    FILE *file = fopen(treasure_file.c_str(), "rb");
+                    if (!file)
+                    {
+                        perror("Error opening treasure file");
+                        is_sending_treasure = false;
+                        continue;
+                    }
+                    fseek(file, 0, SEEK_END);
+                    uint64_t file_size = ftell(file);
+
+                    // Envia mensagem com o tamanho do arquivo
+                    printf("ACK received. Sending treasure file size: %ld.\n", file_size);
+                    Message size_message = Message((uint8_t)8, sequence, DATA_SIZE, (uint8_t *)&file_size);
+                    int32_t sent_size_bytes = net.send_message(&size_message);
+
+                    // Espera ACK do jogador
+                    received_message = net.receive_message();
+                    if (received_message && received_message->type == ACK)
+                    {
+                        // Envia o arquivo do tesouro
+                        uint8_t *file_data = new uint8_t[file_size];
+                        fread(file_data, 1, file_size, file);
+                        fclose(file);
+
+                        uint32_t num_messages = std::ceil((double)file_size / MAX_DATA_SIZE);
+                        uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
+                        for (int i = 0; i < num_messages; i++)
+                        {
+                            uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(file_size - (i * MAX_DATA_SIZE)));
+                            memcpy(data_chunk, file_data + (i * MAX_DATA_SIZE), chunk_size);
+
+                            Message treasure_message = Message(chunk_size, sequence, DATA, file_data);
+                            int32_t sent_file_bytes = net.send_message(&treasure_message);
+                            if (sent_file_bytes == -1)
+                                perror("Error sending treasure file");
+                            else
+                                sequence++;
+
+                            // Espera ACK do jogador
+                            received_message = net.receive_message();
+                            if (received_message && received_message->type == ACK)
+                            {
+                                printf("ACK received for chunk %d.\n", i + 1);
+                            }
+                            else
+                            {
+                                printf("NACK received or no response for chunk %d. Retrying...\n", i + 1);
+                                i--; // Reenviar o mesmo chunk
+                            }
+                        }
+                        delete[] file_data;
+                    }
+                }
             }
         }
     }
