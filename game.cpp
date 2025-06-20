@@ -119,3 +119,28 @@ bool Map::move_player(message_type movement)
 
     return false;
 }
+
+Treasure::Treasure(const std::string &name, const std::string &file_type, bool write)
+{
+    this->filename = TREASURE_DIR + name + file_type;
+
+    this->filename_data = new uint8_t[name.size()];
+    std::copy(filename.begin(), filename.end(), filename_data);
+
+    std::string mode = write ? "wb" : "rb";
+    this->file = fopen(filename.c_str(), mode.c_str());
+    
+    if (!this->file)
+    {
+        perror("Error opening treasure file");
+    }
+
+    if (!write)
+    {
+        fseek(file, 0, SEEK_END);
+        this->size = ftell(file);
+
+        this->data = new uint8_t[this->size];
+        fread(this->data, 1, this->size, this->file);
+    }
+}

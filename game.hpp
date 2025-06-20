@@ -2,6 +2,7 @@
 #define GAME_H
 
 #include "network.hpp"
+#include <string>
 
 #define GRID_SIDE 8
 #define NUM_TREASURES 8
@@ -38,6 +39,19 @@ public:
 
     void print();
     bool move_player(message_type movement);
+};
+
+class Treasure
+{
+public:
+    std::string filename;
+    uint8_t *filename_data;
+    FILE *file;
+    uint64_t size;
+    uint8_t *data;
+
+    Treasure(const std::string &name, const std::string &file_type, bool write);
+    ~Treasure();
 };
 
 #endif
