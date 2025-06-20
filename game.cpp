@@ -120,9 +120,9 @@ bool Map::move_player(message_type movement)
     return false;
 }
 
-Treasure::Treasure(const std::string &name, const std::string &file_type, bool write)
+Treasure::Treasure(const std::string &name, bool write)
 {
-    this->filename = TREASURE_DIR + name + file_type;
+    this->filename = name;
 
     this->filename_data = new uint8_t[name.size()];
     std::copy(filename.begin(), filename.end(), filename_data);

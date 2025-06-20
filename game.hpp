@@ -50,7 +50,7 @@ public:
     uint64_t size;
     uint8_t *data;
 
-    Treasure(const std::string &name, const std::string &file_type, bool write);
+    Treasure(const std::string &name, bool write);
     ~Treasure();
 };
 
