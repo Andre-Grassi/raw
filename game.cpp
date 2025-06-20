@@ -129,7 +129,7 @@ Treasure::Treasure(const std::string &name, const std::string &file_type, bool w
 
     std::string mode = write ? "wb" : "rb";
     this->file = fopen(filename.c_str(), mode.c_str());
-    
+
     if (!this->file)
     {
         perror("Error opening treasure file");
@@ -143,4 +143,12 @@ Treasure::Treasure(const std::string &name, const std::string &file_type, bool w
         this->data = new uint8_t[this->size];
         fread(this->data, 1, this->size, this->file);
     }
+}
+
+Treasure::~Treasure()
+{
+    if (file)
+        fclose(file);
+    delete[] filename_data;
+    delete[] data;
 }
