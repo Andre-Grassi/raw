@@ -19,6 +19,7 @@ enum message_type
     OK_ACK,
     UNKNOWN,
     DATA_SIZE,
+    DATA,
     TXT_ACK_NAME,
     VID_ACK_NAME,
     IMG_ACK_NAME,
