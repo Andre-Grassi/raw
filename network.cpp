@@ -101,6 +101,7 @@ int32_t Network::send_message(Message *message)
     }
 
 #ifdef VERBOSE
+    puts("Sending message:");
     // Imprime os bits do pacote final
     for (size_t i = 0; i < (uint8_t)(METADATA_SIZE + message->size); i++)
     {
@@ -111,6 +112,7 @@ int32_t Network::send_message(Message *message)
         }
         printf("\n");
     }
+    puts("");
 #endif
 
     int32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
@@ -160,6 +162,7 @@ Message *Network::receive_message()
 
     // Imprime os bits do metadata_package
 #ifdef VERBOSE
+    puts("Received message:");
     printf("Metadata Package: ");
     for (int i = 0; i < 32; i++)
     {
