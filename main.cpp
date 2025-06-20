@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     else
         is_player = false;
 
-    Network net = Network("vethad51af4", "vethad51af4");
+    Network net = Network("enp2s0", "enp2s0");
 
     Map map = Map(is_player);
 
@@ -155,6 +155,7 @@ int main(int argc, char *argv[])
                     break;
                 }
                 }
+                received_message = nullptr;
 
                 delete received_message;
             }

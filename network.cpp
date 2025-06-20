@@ -73,9 +73,6 @@ Network::Network(char *my_interface_name, char *other_interface_name)
 {
     my_socket.socket_fd = cria_raw_socket(my_interface_name);
     my_socket.interface_name = my_interface_name;
-
-    other_socket.socket_fd = cria_raw_socket(other_interface_name);
-    other_socket.interface_name = other_interface_name;
 }
 
 int32_t Network::send_message(Message *message)
@@ -125,7 +122,7 @@ Message *Network::receive_message()
 {
     uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
 
-    ssize_t received_bytes = recv(this->other_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
+    ssize_t received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
 
     if (received_bytes < 0)
     {
