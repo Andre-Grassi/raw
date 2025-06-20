@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 {
     srand(0);
 
-    Network net = Network("enp2s0");
+    Network net = Network("enp3s0");
 
     Map map = Map(false); // Server mode
 
@@ -34,7 +34,9 @@ int main(int argc, char *argv[])
                 case LEFT:
                 case RIGHT:
                 {
+                    map.move_player((message_type)received_message->type);
                     printf("Player moved. Sending ACK.\n");
+                    map.print();
                     Message ack_message = Message(0, sequence, ACK, NULL);
                     int32_t sent_bytes = net.send_message(&ack_message);
                     if (sent_bytes == -1)
