@@ -35,7 +35,7 @@ public:
     Map(bool is_player);
 
     void print();
-    bool move_player(char movement);
+    bool move_player(message_type movement);
 };
 
 #endif
