@@ -1,3 +1,6 @@
+#ifndef NETWORK_H
+#define NETWORK_H
+
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 #include <linux/if_packet.h>
@@ -61,3 +64,5 @@ public:
     uint32_t send_message(Message *message);
     Message *receive_message();
 };
+
+#endif
