@@ -61,7 +61,7 @@ public:
 
     Network(char *my_interface_name, char *other_interface_name);
 
-    uint32_t send_message(Message *message);
+    int32_t send_message(Message *message);
     Message *receive_message();
 };
 

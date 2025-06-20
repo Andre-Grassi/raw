@@ -78,7 +78,7 @@ Network::Network(char *my_interface_name, char *other_interface_name)
     other_socket.interface_name = other_interface_name;
 }
 
-uint32_t Network::send_message(Message *message)
+int32_t Network::send_message(Message *message)
 {
     uint32_t metadata_package = 0;
 
@@ -116,7 +116,7 @@ uint32_t Network::send_message(Message *message)
     }
 #endif
 
-    uint32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
+    int32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
 
     return sent_bytes;
 }
