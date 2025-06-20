@@ -101,11 +101,16 @@ bool Map::move_player(message_type movement)
             valid_move = true;
         }
         break;
+    default:
+        return false;
     }
 
     if (valid_move)
     {
         grid[player_position.x][player_position.y] = PLAYER;
         grid[old_position.x][old_position.y] = VISITED;
+        return true;
     }
+
+    return false;
 }
