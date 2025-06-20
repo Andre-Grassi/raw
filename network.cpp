@@ -69,7 +69,7 @@ int cria_raw_socket(char *nome_interface_rede)
     return soquete;
 }
 
-Network::Network(char *my_interface_name, char *other_interface_name)
+Network::Network(char *my_interface_name)
 {
     my_socket.socket_fd = cria_raw_socket(my_interface_name);
     my_socket.interface_name = my_interface_name;

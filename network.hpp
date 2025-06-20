@@ -57,9 +57,8 @@ public:
     };
 
     socket my_socket;
-    socket other_socket;
 
-    Network(char *my_interface_name, char *other_interface_name);
+    Network(char *my_interface_name);
 
     int32_t send_message(Message *message);
     Message *receive_message();
