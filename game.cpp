@@ -13,6 +13,11 @@ Coordinate::Coordinate()
     this->y = 0;
 }
 
+bool Coordinate::operator==(const Coordinate &other) const
+{
+    return (this->x == other.x && this->y == other.y);
+}
+
 Map::Map(bool is_player)
 {
     // Inicializa grid com EMPTY

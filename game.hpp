@@ -15,6 +15,8 @@ public:
 
     Coordinate();
     Coordinate(uint8_t x, uint8_t y);
+
+    bool operator==(const Coordinate &other) const;
 };
 
 enum cell_type
