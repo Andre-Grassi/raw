@@ -140,6 +140,32 @@ int main(int argc, char *argv[])
                                 i--; // Reenviar o mesmo chunk
                             }
                         }
+
+                        // Envia mensagem de fim de transmissão
+                        received_message = nullptr;
+                        do
+                        {
+                            int32_t sent_end_bytes = -1;
+                            do
+                            {
+                                Message end_message = Message(0, sequence, END, NULL);
+                                sent_end_bytes = net.send_message(&end_message);
+
+                                if (sent_end_bytes == -1)
+                                    perror("Error sending end message");
+
+                                else
+                                    printf("End message sent.\n");
+
+                            } while (sent_end_bytes == -1);
+                            sequence++;
+
+                            // Espera ACK do jogador
+                            received_message = net.receive_message();
+                            if (!received_message)
+                                sequence--; // No response, retry
+                        } while (!received_message || received_message->type != ACK);
+                        printf("ACK received for end message. Treasure transfer complete.\n");
                         delete[] data_chunk;
                         delete treasure;
                         is_sending_treasure = false; // Reset sending state
