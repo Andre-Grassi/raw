@@ -131,7 +131,15 @@ int main(int argc, char *argv[])
                         uint8_t chunk_size = received_message->size;
                         size_t writed = fwrite(received_message->data, 1, chunk_size, treasure->file);
                         printf("Wrote %zu bytes to treasure file.\n", writed);
+                        break;
+                    }
+                    case END:
+                    {
                         fclose(treasure->file);
+                        printf("Treasure %s received successfully!\n", treasure->filename.c_str());
+                        found_treasure = false;
+                        can_move = true; // Allow player to move again
+                        break;
                     }
                     }
 
