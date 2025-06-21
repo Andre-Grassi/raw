@@ -125,8 +125,12 @@ Treasure::Treasure(const std::string &name, bool write)
 {
     this->filename = name;
 
-    this->filename_data = new uint8_t[name.size()];
+    this->filename_data = new uint8_t[name.size() + 1];
+    // Inicializa filename_data com \0
+    std::fill_n(filename_data, name.size(), 0);
     std::copy(filename.begin(), filename.end(), filename_data);
+    // Coloca terminação nula
+    filename_data[name.size()] = '\0';
 
     std::string mode = write ? "wb" : "rb";
     this->file = fopen(filename.c_str(), mode.c_str());
