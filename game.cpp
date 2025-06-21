@@ -141,6 +141,7 @@ Treasure::Treasure(const std::string &name, bool write)
         this->size = ftell(file);
 
         this->data = new uint8_t[this->size];
+        fseek(file, 0, SEEK_SET);
         fread(this->data, 1, this->size, this->file);
     }
 }
