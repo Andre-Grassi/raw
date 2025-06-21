@@ -88,7 +88,8 @@ int main(int argc, char *argv[])
             std::string name = TREASURE_DIR + std::to_string(treasure_index + 1) + ".txt";
             Treasure *treasure = new Treasure(name, false);
 
-            Message ack_treasure = Message(treasure->filename.size(), sequence, TXT_ACK_NAME, treasure->filename_data);
+            // Size + 1 to include null terminator
+            Message ack_treasure = Message(treasure->filename.size() + 1, sequence, TXT_ACK_NAME, treasure->filename_data);
             int32_t sent_bytes = net.send_message(&ack_treasure);
             if (sent_bytes == -1)
                 perror("Error sending ack treasure");
