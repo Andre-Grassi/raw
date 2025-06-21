@@ -25,4 +25,4 @@ send_listen: object_files
 	g++ -o listen listen.cpp $(MODULES:=.o) $(LIB)
 
 clean:
-	rm -f *.o player server send listen 
+	rm -f *.o player server send listen objetos/* 
