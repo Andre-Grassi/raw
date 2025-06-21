@@ -42,11 +42,12 @@ int main(int argc, char *argv[])
                     // Testa se player encontrou um tesouro
                     for (int i = 0; i < NUM_TREASURES; ++i)
                     {
-                        if (map.player_position == map.treasures[i])
+                        if (map.player_position == map.treasures[i].position && !(map.treasures[i].found))
                         {
+                            map.treasures[i].found = true; // Mark treasure as found
                             is_sending_treasure = true;
                             treasure_index = i;
-                            printf("Player found a treasure at (%d, %d)!\n", map.treasures[i].x, map.treasures[i].y);
+                            printf("Player found a treasure at (%d, %d)!\n", map.treasures[i].position.x, map.treasures[i].position.y);
                             break;
                         }
                     }

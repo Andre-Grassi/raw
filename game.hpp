@@ -28,11 +28,17 @@ enum cell_type
     TREASURE,
 };
 
+struct Treasure_Position
+{
+    Coordinate position;
+    bool found;
+};
+
 class Map
 {
 public:
     cell_type grid[GRID_SIDE][GRID_SIDE];
-    Coordinate treasures[NUM_TREASURES];
+    Treasure_Position treasures[NUM_TREASURES];
     Coordinate player_position;
 
     Map(bool is_player);

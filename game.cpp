@@ -38,7 +38,8 @@ Map::Map(bool is_player)
                 y = rand() % GRID_SIDE;
             } while (grid[x][y] != EMPTY); // Garante que a posição esteja vazia
 
-            treasures[i] = Coordinate(x, y);
+            treasures[i].position = Coordinate(x, y);
+            treasures[i].found = false;
             grid[x][y] = TREASURE;
         }
     }
