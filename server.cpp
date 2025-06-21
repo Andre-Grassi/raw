@@ -84,11 +84,10 @@ int main(int argc, char *argv[])
             // Server logic: send treasure to player
             printf("Sending treasure to player...\n");
 
-            std::string filename = std::to_string(treasure_index + 1);
-            // Convert filename to uint8_t array
-            uint8_t *filename_data = new uint8_t[filename.size()];
-            std::copy(filename.begin(), filename.end(), filename_data);
-            Message ack_treasure = Message(filename.size(), sequence, TXT_ACK_NAME, filename_data);
+            std::string name = TREASURE_DIR + std::to_string(treasure_index + 1) + ".txt";
+            Treasure *treasure = new Treasure(name, false);
+
+            Message ack_treasure = Message(treasure->filename.size(), sequence, TXT_ACK_NAME, treasure->filename_data);
             int32_t sent_bytes = net.send_message(&ack_treasure);
             if (sent_bytes == -1)
                 perror("Error sending ack treasure");
@@ -101,40 +100,28 @@ int main(int argc, char *argv[])
             {
                 if (received_message->type == ACK)
                 {
-                    // Obtém arquivo do tesouro
-                    std::string treasure_file = TREASURE_DIR + filename + ".txt";
-                    FILE *file = fopen(treasure_file.c_str(), "rb");
-                    if (!file)
-                    {
-                        perror("Error opening treasure file");
-                        is_sending_treasure = false;
-                        continue;
-                    }
-                    fseek(file, 0, SEEK_END);
-                    uint64_t file_size = ftell(file);
-
                     // Envia mensagem com o tamanho do arquivo
-                    printf("ACK received. Sending treasure file size: %ld.\n", file_size);
-                    Message size_message = Message((uint8_t)8, sequence, DATA_SIZE, (uint8_t *)&file_size);
+                    printf("ACK received. Sending treasure file size: %ld.\n", treasure->size);
+                    Message size_message = Message((uint8_t)8, sequence, DATA_SIZE, (uint8_t *)&treasure->size);
                     int32_t sent_size_bytes = net.send_message(&size_message);
 
                     // Espera ACK do jogador
                     received_message = net.receive_message();
                     if (received_message && received_message->type == ACK)
                     {
-                        // Envia o arquivo do tesouro
-                        uint8_t *file_data = new uint8_t[file_size];
-                        fread(file_data, 1, file_size, file);
-                        fclose(file);
+                        sequence++;
 
-                        uint32_t num_messages = std::ceil((double)file_size / MAX_DATA_SIZE);
+                        // Envia o arquivo do tesouro
+                        puts("ACK received. Sending treasure file data...");
+
+                        uint32_t num_messages = std::ceil((double)treasure->size / MAX_DATA_SIZE);
                         uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
                         for (int i = 0; i < num_messages; i++)
                         {
-                            uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(file_size - (i * MAX_DATA_SIZE)));
-                            memcpy(data_chunk, file_data + (i * MAX_DATA_SIZE), chunk_size);
+                            uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(treasure->size - (i * MAX_DATA_SIZE)));
+                            memcpy(data_chunk, treasure->data + (i * MAX_DATA_SIZE), chunk_size);
 
-                            Message treasure_message = Message(chunk_size, sequence, DATA, file_data);
+                            Message treasure_message = Message(chunk_size, sequence, DATA, data_chunk);
                             int32_t sent_file_bytes = net.send_message(&treasure_message);
                             if (sent_file_bytes == -1)
                                 perror("Error sending treasure file");
@@ -153,7 +140,9 @@ int main(int argc, char *argv[])
                                 i--; // Reenviar o mesmo chunk
                             }
                         }
-                        delete[] file_data;
+                        delete[] data_chunk;
+                        delete treasure;
+                        is_sending_treasure = false; // Reset sending state
                     }
                 }
             }
