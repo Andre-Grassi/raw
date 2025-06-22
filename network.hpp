@@ -12,12 +12,14 @@
 #define MAX_DATA_SIZE 127
 #define VERBOSE
 
+#define BROKEN_MESSAGE nullptr
+
 enum message_type
 {
     ACK,
     NACK,
     OK_ACK,
-    UNKNOWN,
+    TOO_BIG,
     DATA_SIZE,
     DATA,
     TXT_ACK_NAME,
@@ -58,7 +60,8 @@ public:
     };
 
     socket my_socket;
-
+    uint8_t my_sequence;
+    uint8_t other_sequence;
     Network(char *my_interface_name);
 
     int32_t send_message(Message *message);

@@ -73,10 +73,15 @@ Network::Network(char *my_interface_name)
 {
     my_socket.socket_fd = cria_raw_socket(my_interface_name);
     my_socket.interface_name = my_interface_name;
+    my_sequence = 0;
+    other_sequence = 0;
 }
 
-int32_t Network::send_message(Message *message)
+int32_t send_message_aux(Network *net, Message *message)
 {
+    int32_t sent_bytes = -1;
+    Message *return_message;
+
     uint32_t metadata_package = 0;
 
     metadata_package |= (uint32_t)message->start_delimiter;
@@ -115,42 +120,76 @@ int32_t Network::send_message(Message *message)
     puts("");
 #endif
 
-    int32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
+    sent_bytes = send(net->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
 
+    return sent_bytes;
+}
+
+int32_t Network::send_message(Message *message)
+{
+    int32_t sent_bytes = -1;
+    uint8_t seq = message->sequence;
+    Message *return_message;
+    bool error = false;
+    do
+    {
+        sent_bytes = send_message_aux(this, message);
+        if (sent_bytes == -1)
+            error = true;
+
+        else if (message->type != ACK && message->type != NACK)
+        {
+            return_message = receive_message();
+
+            if (return_message == BROKEN_MESSAGE || return_message->type == NACK)
+                error = true;
+        }
+    } while (error);
+
+    my_sequence++;
     return sent_bytes;
 }
 
 Message *Network::receive_message()
 {
-    uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
+    uint8_t *received_package;
+    ssize_t received_bytes;
+    uint8_t start_delimiter;
+    uint32_t metadata_package;
 
-    ssize_t received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
-
-    if (received_bytes < 0)
+    // Espera até receber um pacote com tamanho mínimo e início válido
+    do
     {
-        perror("Erro ao receber mensagem");
+        // Loop até receber um pacote com tamanho mínimo válido
+        do
+        {
+            received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
+
+            received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
+        } while (received_bytes < METADATA_SIZE);
+
+        // Extrai os metadados do pacote recebido
+        metadata_package = 0;
+
+        for (size_t i = 0; i < METADATA_SIZE; i++)
+        {
+            metadata_package |= (received_package[i] << (i * 8));
+        }
+
+        start_delimiter = metadata_package & 0xFF;
+    } while (start_delimiter != 0b01111110); // Verifica se o start_delimiter é válido
+
+    uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
+    uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
+
+    // Checa se é a sequência esperada
+    if (sequence > other_sequence)
+    {
+        fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
         delete[] received_package;
-        return nullptr;
+        return BROKEN_MESSAGE; // Retorna nullptr se a sequência não for a esperada
     }
 
-    if (received_bytes < METADATA_SIZE)
-    {
-        fprintf(stderr, "Pacote recebido incompleto.\n");
-        delete[] received_package;
-        return nullptr;
-    }
-
-    // Extrai os metadados do pacote recebido
-    uint32_t metadata_package = 0;
-
-    for (size_t i = 0; i < METADATA_SIZE; i++)
-    {
-        metadata_package |= (received_package[i] << (i * 8));
-    }
-
-    uint8_t start_delimiter = metadata_package & 0xFF;
-    uint8_t size = (metadata_package >> 8) & 0x7F;               // 7 bits
-    uint8_t sequence = (metadata_package >> 15) & 0x1F;          // 5 bits
     uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits
     uint8_t checksum_original = (metadata_package >> 24) & 0xFF; // 8 bits
 
@@ -230,8 +269,13 @@ Message *Network::receive_message()
         fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
         delete[] received_package;
         delete message;
-        return nullptr; // Retorna nullptr se o checksum não bater
+        return BROKEN_MESSAGE; // Retorna nullptr se o checksum não bater
     }
+
+    other_sequence++; // Atualiza a sequência do outro lado
+
+    // Libera o buffer de recebimento
+    delete[] received_package;
 
     return message;
 }
