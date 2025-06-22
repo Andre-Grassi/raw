@@ -80,7 +80,6 @@ Network::Network(char *my_interface_name)
 int32_t send_message_aux(Network *net, Message *message)
 {
     int32_t sent_bytes = -1;
-    Message *return_message;
 
     uint32_t metadata_package = 0;
 
@@ -128,11 +127,11 @@ int32_t send_message_aux(Network *net, Message *message)
 int32_t Network::send_message(Message *message)
 {
     int32_t sent_bytes = -1;
-    uint8_t seq = message->sequence;
     Message *return_message;
     bool error = false;
     do
     {
+        error = false;
         sent_bytes = send_message_aux(this, message);
         if (sent_bytes == -1)
             error = true;
@@ -152,7 +151,7 @@ int32_t Network::send_message(Message *message)
 
 Message *Network::receive_message()
 {
-    uint8_t *received_package;
+    uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
     ssize_t received_bytes;
     uint8_t start_delimiter;
     uint32_t metadata_package;
@@ -163,8 +162,6 @@ Message *Network::receive_message()
         // Loop até receber um pacote com tamanho mínimo válido
         do
         {
-            received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
-
             received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
         } while (received_bytes < METADATA_SIZE);
 
