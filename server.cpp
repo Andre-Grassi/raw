@@ -6,6 +6,29 @@
 #include <iostream>
 #include <cmath>
 #include <string.h>
+#include <dirent.h>
+
+// prefix não pode ter o path do diretório
+std::string find_file_with_prefix(const std::string &dir_path, const std::string &prefix)
+{
+    DIR *dir = opendir(dir_path.c_str());
+    if (!dir)
+        throw std::runtime_error("Could not open directory: " + dir_path);
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+        if (entry->d_name[0] == '.')
+            continue; // Ignora "." e ".."
+        if (strncmp(entry->d_name, prefix.c_str(), prefix.size()) == 0)
+        {
+            closedir(dir);
+            return dir_path + "/" + entry->d_name;
+        }
+    }
+    closedir(dir);
+    throw std::runtime_error("No file found with prefix: " + prefix);
+}
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +108,13 @@ int main(int argc, char *argv[])
             // Server logic: send treasure to player
             printf("Sending treasure to player...\n");
 
-            std::string name = TREASURE_DIR + std::to_string(treasure_index + 1) + ".txt";
+            // Obtém o nome do tesouro baseado no índice do tesouro encontrado
+            std::string prefix = std::to_string(treasure_index + 1);
+
+            // Pega o nome do arquivo do tesouro com base no prefixo, já que
+            // a terminação é variável (pode ser .txt, .mp4 e .jpg)
+            std::string name = find_file_with_prefix(TREASURE_DIR, prefix);
+
             Treasure *treasure = new Treasure(name, false);
 
             // Size + 1 to include null terminator
