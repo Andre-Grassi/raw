@@ -11,7 +11,6 @@
 #define METADATA_SIZE 4
 #define MAX_DATA_SIZE 127
 #define TIMEOUT_MS 1000
-#define VERBOSE
 
 #define BROKEN_MESSAGE nullptr
 #define TIMED_OUT_MSG nullptr
@@ -70,8 +69,8 @@ public:
     };
 
     socket my_socket;
-    uint8_t my_sequence:5;
-    uint8_t other_sequence:5;
+    uint8_t my_sequence : 5;
+    uint8_t other_sequence : 5;
     Network(char *my_interface_name);
 
     Message *send_message(Message *message);

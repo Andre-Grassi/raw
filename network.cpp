@@ -186,11 +186,15 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 
         if (is_waiting_response && elapsed_time > TIMEOUT_MS)
         {
+#ifdef VERBOSE
             fprintf(stderr, "Tempo limite excedido ao esperar por resposta.\n");
+#endif
             return error_type::TIMED_OUT;
         }
 
+#ifdef VERBOSE
         printf("Received bytes: %zd\n", received_bytes);
+#endif
         if (received_bytes >= METADATA_SIZE)
         {
             // Extrai os metadados do pacote recebido
@@ -213,7 +217,9 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     // Checa se é a sequência esperada
     if (sequence > other_sequence)
     {
+#ifdef VERBOSE
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
+#endif
         delete[] received_package;
         if (is_waiting_response)
             return error_type::BROKEN;
@@ -225,10 +231,12 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
             return receive_message(returned_message, false); // Chama novamente para receber a mensagem de volta
         }
     }
-    
+
     else if (sequence < other_sequence)
     {
+#ifdef VERBOSE
         fprintf(stderr, "Mensagem antiga recebida");
+#endif
 
         // Mensagem antiga recebida, ignora
         // Envia ACK denovo

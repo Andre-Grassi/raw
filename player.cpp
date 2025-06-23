@@ -106,16 +106,22 @@ int main(int argc, char *argv[])
                     uint64_t size = *((uint64_t *)returned_message->data);
                     treasure->size = size;
                     treasure->data = new uint8_t[size];
+#ifdef VERBOSE
                     printf("Treasure size: %llu bytes\n", size);
+#endif
                 }
                 break;
             }
             case DATA:
             {
+#ifdef VERBOSE
                 puts("Writing data...");
+#endif
                 uint8_t chunk_size = returned_message->size;
                 size_t writed = fwrite(returned_message->data, 1, chunk_size, treasure->file);
+#ifdef VERBOSE
                 printf("Wrote %zu bytes to treasure file.\n", writed);
+#endif
                 break;
             }
             case END:
