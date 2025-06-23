@@ -143,8 +143,6 @@ int main(int argc, char *argv[])
             {
                 if (treasure->data[i] == 0x88 || treasure->data[i] == 0x81)
                 {
-                    bytes_proibidos++;
-
                     if (j % 127 == 126)
                         bytes_extras++;
 
@@ -159,9 +157,6 @@ int main(int argc, char *argv[])
                 }
             }
             
-            printf("Bytes proibidos: %ld\n", bytes_proibidos);
-            printf("Buffer size: %ld\n", j);
-            printf("Treasure size: %ld\n", treasure->size);
             buffer_size = j;
             uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras)/ MAX_DATA_SIZE);
             size_t inicio = 0;
@@ -169,39 +164,23 @@ int main(int argc, char *argv[])
             for (int i = 0; i < num_messages; i++)
             {
                 uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - inicio));
-                bool a  = false;
-                if (chunk_size == 127)
+
+                // Vê se o último byte é proibido
+                if (chunk_size == 127 &&
+                    (buffer[inicio + chunk_size - 1] == 0x81 ||
+                     buffer[inicio + chunk_size - 1] == 0x88))
                 {
-                    // Vê se o último byte é proibido
-                    if (buffer[inicio + chunk_size - 1] == 0x81 ||
-                        buffer[inicio + chunk_size - 1] == 0x88)
-                        {
-                            chunk_size--;
-                        }
+                    // Deixa o byte proibido para a próxima mensagem
+                    chunk_size--;
                 }
+
                 memcpy(data_chunk, buffer + inicio, chunk_size);
-                inicio += chunk_size;
-                // Itera sobre os bytes de data chunk e faz exit se encontrar o Byte 0x88 ou 0x81
-                for (int j = 0; j < chunk_size; j++)
-                {
-                    if (data_chunk[j] == 0x88 || data_chunk[j] == 0x81)
-                    {
-                        if (data_chunk[j+1] != 0xff)
-                        {
-                            /*
-                            printf("Error: Invalid byte sequence found in data chunk. Exiting.\n");
-                            printf("j: %d, chunk_size: %d\n", j, chunk_size);
-                            delete[] data_chunk;
-                            delete[] buffer;
-                            delete treasure;
-                            return 1; // Exit with error
-                            */
-                        }
-                    }
-                }
 
                 Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
                 net.send_message(&treasure_message);
+
+                // Atualiza o próximo início de mensagem
+                inicio += chunk_size;
             }
 
             // Envia mensagem de fim de transmissão
