@@ -36,6 +36,14 @@ enum message_type
     ERROR
 };
 
+enum error_type
+{
+    NO_ERROR,
+    BROKEN,
+    TIMED_OUT,
+    OLD
+};
+
 class Message
 {
 public:
@@ -67,7 +75,7 @@ public:
     Network(char *my_interface_name);
 
     int32_t send_message(Message *message);
-    Message *receive_message();
+    error_type receive_message(Message *returned_message);
 };
 
 #endif

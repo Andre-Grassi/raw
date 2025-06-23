@@ -147,9 +147,9 @@ int32_t Network::send_message(Message *message)
 
         else if (message->type != ACK && message->type != NACK)
         {
-            return_message = receive_message();
+            error_type error_t = receive_message(return_message);
 
-            if (return_message == BROKEN_MESSAGE || return_message == TIMED_OUT_MSG || return_message->type == NACK)
+            if (error_t == BROKEN || error_t == TIMED_OUT || return_message->type == NACK)
                 error = true;
         }
     } while (error);
@@ -158,7 +158,7 @@ int32_t Network::send_message(Message *message)
     return sent_bytes;
 }
 
-Message *Network::receive_message()
+error_type Network::receive_message(Message *returned_message)
 {
     uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
     ssize_t received_bytes;
@@ -194,7 +194,7 @@ Message *Network::receive_message()
     } while (elapsed_time <= TIMEOUT_MS && error);
 
     if (elapsed_time > TIMEOUT_MS)
-        return TIMED_OUT_MSG;
+        return error_type::TIMED_OUT;
 
     uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
     uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
@@ -204,12 +204,12 @@ Message *Network::receive_message()
     {
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
         delete[] received_package;
-        return BROKEN_MESSAGE; // Retorna nullptr se a sequência não for a esperada
+        return error_type::BROKEN; // Retorna nullptr se a sequência não for a esperada
     }
     else if (sequence < other_sequence)
     {
         // Mensagem antiga recebida, ignora
-        return nullptr;
+        return error_type::OLD;
     }
 
     uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits
@@ -291,13 +291,15 @@ Message *Network::receive_message()
         fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
         delete[] received_package;
         delete message;
-        return BROKEN_MESSAGE; // Retorna nullptr se o checksum não bater
+        return error_type::BROKEN; // Retorna nullptr se o checksum não bater
     }
 
     other_sequence++; // Atualiza a sequência do outro lado
 
+    returned_message = message; // Atribui a mensagem recebida ao ponteiro passado
+
     // Libera o buffer de recebimento
     delete[] received_package;
 
-    return message;
+    return error_type::NO_ERROR; // Retorna a mensagem recebida com sucesso
 }

@@ -36,10 +36,11 @@ int main()
     int treasure_index = 0; // Index of the treasure to be sent
     Network *net = new Network("enp2s0");
 
-    Message *received_message = net->receive_message();
+    Message *received_message = nullptr;
+    error_type err = net->receive_message(received_message);
     // Envia nack
     net->send_message(new Message(0, net->my_sequence, NACK, NULL));
 
-    received_message = net->receive_message();
+    err = net->receive_message(received_message);
     net->send_message(new Message(0, net->my_sequence, ACK, NULL));
 }
