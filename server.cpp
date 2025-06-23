@@ -127,6 +127,25 @@ int main(int argc, char *argv[])
                 // Envia ack
                 Message ack_too_big = Message(0, net.my_sequence, ACK, NULL);
                 net.send_message(&ack_too_big);
+                
+                // Checa se todos os tesouros foram encontrados
+                bool all_treasures_found = true;
+                size_t i = 0;
+                while (i < NUM_TREASURES && all_treasures_found)
+                {
+                    if (!map.treasures[i].found)
+                    {
+                        all_treasures_found = false;
+                    }
+                    i++;
+                }
+
+                if (all_treasures_found)
+                {
+                    puts("All treasures found! Ending game.");
+                    end = true;
+                }
+                    
                 delete treasure;
                 continue;
             }
@@ -193,6 +212,24 @@ int main(int argc, char *argv[])
             delete treasure;
 
             is_sending_treasure = false; // Reset sending state
+
+            // Checa se todos os tesouros foram encontrados
+            bool all_treasures_found = true;
+            size_t i = 0;
+            while (i < NUM_TREASURES && all_treasures_found)
+            {
+                if (!map.treasures[i].found)
+                {
+                    all_treasures_found = false;
+                }
+                i++;
+            }
+            
+            if (all_treasures_found)
+            {
+                puts("All treasures found! Ending game.");
+                end = true;
+            }
         }
     }
     return 0;
