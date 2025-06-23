@@ -7,6 +7,15 @@
 #include <cstring>
 
 #include "network.hpp"
+#include <sys/time.h>
+
+// usando long long pra (tentar) sobreviver ao ano 2038
+long long timestamp()
+{
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
 
 Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
 {
@@ -140,7 +149,7 @@ int32_t Network::send_message(Message *message)
         {
             return_message = receive_message();
 
-            if (return_message == BROKEN_MESSAGE || return_message->type == NACK)
+            if (return_message == BROKEN_MESSAGE || return_message == TIMED_OUT_MSG || return_message->type == NACK)
                 error = true;
         }
     } while (error);
@@ -156,25 +165,36 @@ Message *Network::receive_message()
     uint8_t start_delimiter;
     uint32_t metadata_package;
 
+    long long comeco = timestamp();
+    struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
+    setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+    long long elapsed_time = 0;
+
     // Espera até receber um pacote com tamanho mínimo e início válido
+    bool error;
     do
     {
-        // Loop até receber um pacote com tamanho mínimo válido
-        do
-        {
-            received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
-        } while (received_bytes < METADATA_SIZE);
+        received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
 
-        // Extrai os metadados do pacote recebido
-        metadata_package = 0;
-
-        for (size_t i = 0; i < METADATA_SIZE; i++)
+        if (received_bytes >= METADATA_SIZE)
         {
-            metadata_package |= (received_package[i] << (i * 8));
+            // Extrai os metadados do pacote recebido
+            metadata_package = 0;
+
+            for (size_t i = 0; i < METADATA_SIZE; i++)
+            {
+                metadata_package |= (received_package[i] << (i * 8));
+            }
+
+            start_delimiter = metadata_package & 0xFF;
         }
 
-        start_delimiter = metadata_package & 0xFF;
-    } while (start_delimiter != 0b01111110); // Verifica se o start_delimiter é válido
+        elapsed_time = timestamp() - comeco;
+        error = (received_bytes < METADATA_SIZE || start_delimiter != 0b01111110);
+    } while (elapsed_time <= TIMEOUT_MS && error);
+
+    if (elapsed_time > TIMEOUT_MS)
+        return TIMED_OUT_MSG;
 
     uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
     uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
@@ -185,6 +205,11 @@ Message *Network::receive_message()
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
         delete[] received_package;
         return BROKEN_MESSAGE; // Retorna nullptr se a sequência não for a esperada
+    }
+    else if (sequence < other_sequence)
+    {
+        // Mensagem antiga recebida, ignora
+        return nullptr;
     }
 
     uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits

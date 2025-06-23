@@ -10,9 +10,11 @@
 
 #define METADATA_SIZE 4
 #define MAX_DATA_SIZE 127
+#define TIMEOUT_MS 1000
 #define VERBOSE
 
 #define BROKEN_MESSAGE nullptr
+#define TIMED_OUT_MSG nullptr
 
 enum message_type
 {
