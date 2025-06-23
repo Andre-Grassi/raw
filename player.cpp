@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
             }
             if (is_valid_move)
             {
+                map.print();
                 Message message = Message(0, net.my_sequence, move, NULL);
                 returned_message = net.send_message(&message);
             }

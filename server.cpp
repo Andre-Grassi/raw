@@ -38,13 +38,12 @@ int main(int argc, char *argv[])
 
     Map map = Map(false); // Server mode
 
-    map.print();
-
     bool end = false;
     bool can_move = true;
     bool is_sending_treasure = false;
     while (!end)
     {
+        map.print();
         uint8_t treasure_index;
         if (!is_sending_treasure)
         {
@@ -78,7 +77,6 @@ int main(int argc, char *argv[])
                 if (!is_sending_treasure)
                 {
                     printf("Player moved. Sending ACK.\n");
-                    map.print();
                     Message ack_message = Message(0, net.my_sequence, ACK, NULL);
                     net.send_message(&ack_message);
                 }
