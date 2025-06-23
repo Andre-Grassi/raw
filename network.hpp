@@ -75,7 +75,7 @@ public:
     Network(char *my_interface_name);
 
     int32_t send_message(Message *message);
-    error_type receive_message(Message *returned_message);
+    error_type receive_message(Message *&returned_message, bool is_waiting_response = false);
 };
 
 #endif

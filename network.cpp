@@ -150,13 +150,10 @@ int32_t Network::send_message(Message *message)
             long long comeco = timestamp();
             struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
             setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-            long long elapsed_time = 0;
 
-            error_type error_t = receive_message(return_message);
+            error_type error_t = receive_message(return_message, true);
 
-            elapsed_time = timestamp() - comeco;
-
-            if (elapsed_time > TIMEOUT_MS || error_t == BROKEN || return_message->type == NACK)
+            if (error_t == TIMED_OUT || error_t == BROKEN || return_message->type == NACK)
                 error = true;
         }
     } while (error);
@@ -165,7 +162,7 @@ int32_t Network::send_message(Message *message)
     return sent_bytes;
 }
 
-error_type Network::receive_message(Message *returned_message)
+error_type Network::receive_message(Message *&returned_message, bool is_waiting_response)
 {
     uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
     ssize_t received_bytes;
@@ -176,8 +173,21 @@ error_type Network::receive_message(Message *returned_message)
     bool error;
     do
     {
+        long long comeco = timestamp();
+        struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
+        setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
         received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
 
+        long long elapsed_time = timestamp() - comeco;
+
+        if (is_waiting_response && elapsed_time > TIMEOUT_MS)
+        {
+            fprintf(stderr, "Tempo limite excedido ao esperar por resposta.\n");
+            return error_type::TIMED_OUT;
+        }
+
+        printf("Received bytes: %zd\n", received_bytes);
         if (received_bytes >= METADATA_SIZE)
         {
             // Extrai os metadados do pacote recebido
@@ -202,7 +212,7 @@ error_type Network::receive_message(Message *returned_message)
     {
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
         delete[] received_package;
-        return error_type::BROKEN; // Retorna nullptr se a sequência não for a esperada
+        return error_type::BROKEN;
     }
     else if (sequence < other_sequence)
     {
