@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
 
     bool end = false;
     bool found_treasure = false;
+    uint8_t num_found_treasures = 0;
     Treasure *treasure = nullptr;
     while (!end)
     {
@@ -84,6 +85,7 @@ int main(int argc, char *argv[])
                 printf("Received a treasure message.\n");
                 puts("Found a treasure!");
                 found_treasure = true;
+                num_found_treasures++;
             }
         }
 
@@ -129,8 +131,13 @@ int main(int argc, char *argv[])
                         Message too_big_message = Message(0, net.my_sequence, TOO_BIG, NULL);
                         net.send_message(&too_big_message);
                         found_treasure = false;
+                        // Checa se achou todos os tesouros
+                        if (num_found_treasures == NUM_TREASURES)
+                        {
+                            puts("All treasures found! Ending game.");
+                            end = true;
+                        }
                         continue;
-                        break;
                     }
                     
                     treasure->data = new uint8_t[size];
@@ -170,6 +177,13 @@ int main(int argc, char *argv[])
                 fclose(treasure->file);
                 printf("Treasure %s received successfully!\n", treasure->filename.c_str());
                 found_treasure = false;
+
+                // Checa se achou todos os tesouros
+                if (num_found_treasures == NUM_TREASURES)
+                {
+                    puts("All treasures found! Ending game.");
+                    end = true;
+                }
                 break;
             }
             }
