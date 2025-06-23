@@ -56,8 +56,10 @@ int main(int argc, char *argv[])
                 is_valid_move = map.move_player(move);
             }
             else
+            {
                 printf("Invalid input. Use only 'w', 'a', 's', or 'd'.\n");
-
+                continue;
+            }
             if (is_valid_move)
             {
                 Message message = Message(0, sequence, move, NULL);
