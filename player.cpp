@@ -4,6 +4,9 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
+#include <sys/statvfs.h>
+#include <sys/stat.h>
+#include <unistd.h>     // Para pathconf (opcional, mas comum com statvfs)
 
 int main(int argc, char *argv[])
 {
@@ -104,6 +107,12 @@ int main(int argc, char *argv[])
                 {
                     // Recebe o tamanho do tesouro
                     uint64_t size = *((uint64_t *)returned_message->data);
+                    
+                    //Para verificar quanto espaço livre uma máquina tem (lembre-se também de ter uma certa tolerância), use a função statvfs (utilizando como caminho, onde se pretende salvar os arquivos que forem recebidos). O espaço livre em bytes é dado por st.f_bsize * st.f_bavail, onde st é a estrutura statvfs.
+                    //Para descobrir que o arquivo é regular e o tamanho do arquivo, utilize a função stat. O tamanho do arquivo em bytes pode ser encontrado em st.st_size onde st é a estrutura stat.
+                    struct statvfs st;
+                    statvfs(TREASURE_DIR, &st);
+
                     treasure->size = size;
                     treasure->data = new uint8_t[size];
 #ifdef VERBOSE

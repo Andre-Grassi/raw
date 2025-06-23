@@ -7,6 +7,8 @@
 #define GRID_SIDE 8
 #define NUM_TREASURES 8
 #define TREASURE_DIR "objetos/"
+#define DEFAULT_TOLERANCE_BYTES = 50 * 1024 * 1024 // 50 MB de tolerância
+
 
 class Coordinate
 {
