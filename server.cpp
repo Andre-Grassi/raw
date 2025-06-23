@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 {
     srand(0);
 
-    Network net = Network("enp3s0");
+    Network net = Network("enp2s0");
 
     Map map = Map(false); // Server mode
 
@@ -132,12 +132,49 @@ int main(int argc, char *argv[])
             // Envia o arquivo do tesouro
             puts("ACK received. Sending treasure file data...");
 
-            uint32_t num_messages = std::ceil((double)treasure->size / MAX_DATA_SIZE);
             uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
+            // Copia treasure->data para buffer com o dobro do seu tamanho
+            uint64_t buffer_size = treasure->size * 2;
+            uint8_t *buffer = new uint8_t[buffer_size];
+            size_t j = 0;
+            for (size_t i = 0; i < treasure->size; i++)
+            {
+                if (treasure->data[i] == 0x88 || treasure->data[i] == 0x81)
+                {
+                    buffer[j] = treasure->data[i];
+                    j++;
+                    buffer[j] = 0xff;
+                    j++;
+                }
+                else {
+                    buffer[j] = treasure->data[i];
+                    j++;
+                }
+            }
+            
+            buffer_size = j;
+            uint32_t num_messages = std::ceil((double)buffer_size/ MAX_DATA_SIZE);
+
             for (int i = 0; i < num_messages; i++)
             {
-                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(treasure->size - (i * MAX_DATA_SIZE)));
-                memcpy(data_chunk, treasure->data + (i * MAX_DATA_SIZE), chunk_size);
+                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - (i * MAX_DATA_SIZE)));
+                memcpy(data_chunk, buffer + (i * MAX_DATA_SIZE), chunk_size);
+
+                // Itera sobre os bytes de data chunk e faz exit se encontrar o Byte 0x88 ou 0x81
+                for (int j = 0; j < chunk_size; j++)
+                {
+                    if (data_chunk[j] == 0x88 || data_chunk[j] == 0x81)
+                    {
+                        if (data_chunk[j+1] != 0xff)
+                        {
+                            printf("Error: Invalid byte sequence found in data chunk. Exiting.\n");
+                            delete[] data_chunk;
+                            delete[] buffer;
+                            delete treasure;
+                            return 1; // Exit with error
+                        }
+                    }
+                }
 
                 Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
                 net.send_message(&treasure_message);
