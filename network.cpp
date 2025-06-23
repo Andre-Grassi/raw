@@ -225,6 +225,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
             return receive_message(returned_message, false); // Chama novamente para receber a mensagem de volta
         }
     }
+    
     else if (sequence < other_sequence)
     {
         fprintf(stderr, "Mensagem antiga recebida");

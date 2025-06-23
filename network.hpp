@@ -70,8 +70,8 @@ public:
     };
 
     socket my_socket;
-    uint8_t my_sequence;
-    uint8_t other_sequence;
+    uint8_t my_sequence:5;
+    uint8_t other_sequence:5;
     Network(char *my_interface_name);
 
     Message *send_message(Message *message);
