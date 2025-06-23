@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
 
     bool end = false;
     bool found_treasure = false;
-    uint8_t sequence = 0;
     Treasure *treasure = nullptr;
     while (!end)
     {
