@@ -141,7 +141,9 @@ Message *Network::send_message(Message *message)
     do
     {
         error = false;
+
         sent_bytes = send_message_aux(this, message);
+
         if (sent_bytes == -1)
             error = true;
 
@@ -247,7 +249,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 #endif
 
         // Mensagem antiga recebida, ignora
-        // Envia ACK denovo
+        // Envia ACK denovo (e se a msg antiga for apenas duplicada e o outro já tem ACK?)(o problema realmente começa aqui? o server nn tem um problema antes no recebimento do ACK pra acabar reenviando a msg?)
         my_sequence--;
         Message *ack_message = new Message(0, my_sequence, ACK, NULL);
         send_message(ack_message);
@@ -332,9 +334,16 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     if (checksum_original != message->checksum)
     {
         fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
+        if (!is_waiting_response)
+        {
+            Message *nack_message = new Message(0, my_sequence, NACK, NULL);
+            send_message(nack_message);
+            delete nack_message;
+        }
         delete[] received_package;
         delete message;
-        return error_type::BROKEN;
+        return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
+        // return error_type::BROKEN;
     }
 
     other_sequence++; // Atualiza a sequência do outro lado

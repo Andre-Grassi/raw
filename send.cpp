@@ -43,10 +43,13 @@ int main()
     std::string name = find_file_with_prefix(TREASURE_DIR, prefix);
 
     // Pega o sufixo do arquivo
-
     Treasure *treasure = new Treasure(name, false);
 
     // Size + 1 to include null terminator
-    Message ack_treasure = Message(treasure->filename.size() + 1, net->my_sequence, TXT_ACK_NAME, treasure->filename_data);
-    int32_t sent_bytes = net->send_message(&ack_treasure);
+    Message *ack_treasure = new Message(treasure->filename.size() + 1, net->my_sequence, TXT_ACK_NAME, treasure->filename_data);
+    int32_t sent_bytes = net->send_message(ack_treasure);
+    recv(net->my_socket.socket_fd, NULL, 0, 0);
+
+    ack_treasure = new Message(treasure->filename.size() + 1, net->my_sequence - 1, TXT_ACK_NAME, treasure->filename_data);
+    sent_bytes = net->send_message(ack_treasure);
 }
