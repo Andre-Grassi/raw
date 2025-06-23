@@ -168,24 +168,19 @@ int main(int argc, char *argv[])
 
             for (int i = 0; i < num_messages; i++)
             {
-                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - (i * MAX_DATA_SIZE)));
+                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - inicio));
                 bool a  = false;
                 if (chunk_size == 127)
                 {
                     // Vê se o último byte é proibido
-                    if (buffer[(i * MAX_DATA_SIZE) + chunk_size - 1] == 0x81 ||
-                        buffer[(i * MAX_DATA_SIZE) + chunk_size - 1] == 0x88)
+                    if (buffer[inicio + chunk_size - 1] == 0x81 ||
+                        buffer[inicio + chunk_size - 1] == 0x88)
                         {
-
                             chunk_size--;
-                            a = true;
                         }
                 }
                 memcpy(data_chunk, buffer + inicio, chunk_size);
-                inicio += MAX_DATA_SIZE;
-                if (a)
-                    inicio--;
-
+                inicio += chunk_size;
                 // Itera sobre os bytes de data chunk e faz exit se encontrar o Byte 0x88 ou 0x81
                 for (int j = 0; j < chunk_size; j++)
                 {
