@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
             }
             if (is_valid_move)
             {
-                Message message = Message(0, sequence, move, NULL);
+                Message message = Message(0, net.my_sequence, move, NULL);
                 returned_message = net.send_message(&message);
             }
             else
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
             }
 
             // Send ACK
-            Message ack_message = Message(0, sequence, ACK, NULL);
+            Message ack_message = Message(0, net.my_sequence, ACK, NULL);
             net.send_message(&ack_message);
         }
 
