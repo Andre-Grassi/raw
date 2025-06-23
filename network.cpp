@@ -147,9 +147,16 @@ int32_t Network::send_message(Message *message)
 
         else if (message->type != ACK && message->type != NACK)
         {
+            long long comeco = timestamp();
+            struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
+            setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+            long long elapsed_time = 0;
+
             error_type error_t = receive_message(return_message);
 
-            if (error_t == BROKEN || error_t == TIMED_OUT || return_message->type == NACK)
+            elapsed_time = timestamp() - comeco;
+
+            if (elapsed_time > TIMEOUT_MS || error_t == BROKEN || return_message->type == NACK)
                 error = true;
         }
     } while (error);
@@ -164,11 +171,6 @@ error_type Network::receive_message(Message *returned_message)
     ssize_t received_bytes;
     uint8_t start_delimiter;
     uint32_t metadata_package;
-
-    long long comeco = timestamp();
-    struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
-    setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-    long long elapsed_time = 0;
 
     // Espera até receber um pacote com tamanho mínimo e início válido
     bool error;
@@ -189,12 +191,8 @@ error_type Network::receive_message(Message *returned_message)
             start_delimiter = metadata_package & 0xFF;
         }
 
-        elapsed_time = timestamp() - comeco;
         error = (received_bytes < METADATA_SIZE || start_delimiter != 0b01111110);
-    } while (elapsed_time <= TIMEOUT_MS && error);
-
-    if (elapsed_time > TIMEOUT_MS)
-        return error_type::TIMED_OUT;
+    } while (error);
 
     uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
     uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
