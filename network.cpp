@@ -133,10 +133,10 @@ int32_t send_message_aux(Network *net, Message *message)
     return sent_bytes;
 }
 
-int32_t Network::send_message(Message *message)
+Message *Network::send_message(Message *message)
 {
     int32_t sent_bytes = -1;
-    Message *return_message;
+    Message *return_message = nullptr;
     bool error = false;
     do
     {
@@ -155,11 +155,13 @@ int32_t Network::send_message(Message *message)
 
             if (error_t == TIMED_OUT || error_t == BROKEN || return_message->type == NACK)
                 error = true;
+
+            delete return_message;
         }
     } while (error);
 
     my_sequence++;
-    return sent_bytes;
+    return return_message;
 }
 
 error_type Network::receive_message(Message *&returned_message, bool is_waiting_response)
@@ -212,7 +214,15 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     {
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
         delete[] received_package;
-        return error_type::BROKEN;
+        if (is_waiting_response)
+            return error_type::BROKEN;
+        else
+        {
+            Message *nack_message = new Message(0, my_sequence, NACK, NULL);
+            send_message(nack_message);
+            delete nack_message;
+            return receive_message(returned_message, false); // Chama novamente para receber a mensagem de volta
+        }
     }
     else if (sequence < other_sequence)
     {
@@ -306,7 +316,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
         fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
         delete[] received_package;
         delete message;
-        return error_type::BROKEN; // Retorna nullptr se o checksum não bater
+        return error_type::BROKEN;
     }
 
     other_sequence++; // Atualiza a sequência do outro lado
