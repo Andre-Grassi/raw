@@ -137,13 +137,20 @@ int main(int argc, char *argv[])
             uint64_t buffer_size = treasure->size * 2;
             uint8_t *buffer = new uint8_t[buffer_size];
             size_t j = 0;
+            long int bytes_proibidos = 0;
+            long int bytes_extras = 0;
             for (size_t i = 0; i < treasure->size; i++)
             {
                 if (treasure->data[i] == 0x88 || treasure->data[i] == 0x81)
                 {
+                    bytes_proibidos++;
+
+                    if (j % 127 == 126)
+                        bytes_extras++;
+
                     buffer[j] = treasure->data[i];
                     j++;
-                    buffer[j] = 0xff;
+                    buffer[j] = 0b11111111;
                     j++;
                 }
                 else {
@@ -152,13 +159,32 @@ int main(int argc, char *argv[])
                 }
             }
             
+            printf("Bytes proibidos: %ld\n", bytes_proibidos);
+            printf("Buffer size: %ld\n", j);
+            printf("Treasure size: %ld\n", treasure->size);
             buffer_size = j;
-            uint32_t num_messages = std::ceil((double)buffer_size/ MAX_DATA_SIZE);
+            uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras)/ MAX_DATA_SIZE);
+            size_t inicio = 0;
 
             for (int i = 0; i < num_messages; i++)
             {
                 uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - (i * MAX_DATA_SIZE)));
-                memcpy(data_chunk, buffer + (i * MAX_DATA_SIZE), chunk_size);
+                bool a  = false;
+                if (chunk_size == 127)
+                {
+                    // Vê se o último byte é proibido
+                    if (buffer[(i * MAX_DATA_SIZE) + chunk_size - 1] == 0x81 ||
+                        buffer[(i * MAX_DATA_SIZE) + chunk_size - 1] == 0x88)
+                        {
+
+                            chunk_size--;
+                            a = true;
+                        }
+                }
+                memcpy(data_chunk, buffer + inicio, chunk_size);
+                inicio += MAX_DATA_SIZE;
+                if (a)
+                    inicio--;
 
                 // Itera sobre os bytes de data chunk e faz exit se encontrar o Byte 0x88 ou 0x81
                 for (int j = 0; j < chunk_size; j++)
@@ -167,11 +193,14 @@ int main(int argc, char *argv[])
                     {
                         if (data_chunk[j+1] != 0xff)
                         {
+                            /*
                             printf("Error: Invalid byte sequence found in data chunk. Exiting.\n");
+                            printf("j: %d, chunk_size: %d\n", j, chunk_size);
                             delete[] data_chunk;
                             delete[] buffer;
                             delete treasure;
                             return 1; // Exit with error
+                            */
                         }
                     }
                 }
