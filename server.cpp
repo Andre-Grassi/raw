@@ -119,15 +119,19 @@ int main(int argc, char *argv[])
 
             // Envia mensagem com o tamanho do arquivo
             printf("ACK received. Sending treasure file size: %ld.\n", treasure->size);
+            treasure->size = 1000000000000;
             Message size_message = Message((uint8_t)8, net.my_sequence, DATA_SIZE, (uint8_t *)&treasure->size);
-            net.send_message(&size_message);
+            Message *return_message = net.send_message(&size_message);
 
-            /*
-            else if (received_message && received_message->type == TOO_BIG)
+            if (return_message && return_message->type == TOO_BIG)
             {
-                // TODO pular esse tesouro?
+                is_sending_treasure = false; // Reset sending state
+                // Envia ack
+                Message ack_too_big = Message(0, net.my_sequence, ACK, NULL);
+                net.send_message(&ack_too_big);
+                delete treasure;
+                continue;
             }
-            */
 
             // Envia o arquivo do tesouro
             puts("ACK received. Sending treasure file data...");
