@@ -127,7 +127,20 @@ int main(int argc, char *argv[])
                 puts("Writing data...");
 #endif
                 uint8_t chunk_size = returned_message->size;
-                size_t writed = fwrite(returned_message->data, 1, chunk_size, treasure->file);
+                uint8_t *buffer = new uint8_t[chunk_size];
+                size_t j = 0;
+                for (size_t i = 0; i < chunk_size; i++)
+                {
+                    buffer[j] = returned_message->data[i];
+                    if (returned_message->data[i] == 0x88 || returned_message->data[i] == 0x81)
+                    {
+                        i++; // Skip the next byte
+                    }
+                    j++;
+                }
+
+                size_t writed = fwrite(buffer, 1, j, treasure->file);
+                delete[] buffer;
 #ifdef VERBOSE
                 printf("Wrote %zu bytes to treasure file.\n", writed);
 #endif
