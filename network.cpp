@@ -220,11 +220,14 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
 
     // Checa se é a sequência esperada
-    if (sequence > other_sequence)
+
+    uint8_t i1 = sequence;
+    uint8_t i2 = other_sequence;
+    int8_t distance = (signed)((i1 << 3) - (i2 << 3));
+
+    if (distance > 0) // received sequence > expected sequence
     {
-#ifdef VERBOSE
         fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
-#endif
         delete[] received_package;
         if (is_waiting_response)
             return error_type::BROKEN;
@@ -237,7 +240,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
         }
     }
 
-    else if (sequence < other_sequence)
+    else if (distance < 0) // received sequence < expected sequence
     {
 #ifdef VERBOSE
         fprintf(stderr, "Mensagem antiga recebida");
