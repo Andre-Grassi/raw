@@ -154,9 +154,10 @@ Message *Network::send_message(Message *message)
             error_type error_t = receive_message(return_message, true);
 
             if (error_t == TIMED_OUT || error_t == BROKEN || return_message->type == NACK)
+            {
                 error = true;
-
-            delete return_message;
+                delete return_message;
+            }
         }
     } while (error);
 
