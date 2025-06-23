@@ -16,13 +16,13 @@ int main(int argc, char *argv[])
     map.print();
 
     bool end = false;
-    bool can_move = true;
-    bool is_sending_treasure = false;
+    bool found_treasure = false;
     uint8_t sequence = 0;
     Treasure *treasure = nullptr;
     while (!end)
     {
-        if (can_move)
+        Message *returned_message = nullptr;
+        if (!found_treasure)
         {
             printf("Enter your move (w/a/s/d): ");
 
@@ -55,102 +55,83 @@ int main(int argc, char *argv[])
                 // Process the move
                 is_valid_move = map.move_player(move);
             }
-
             else
                 printf("Invalid input. Use only 'w', 'a', 's', or 'd'.\n");
 
             if (is_valid_move)
             {
                 Message message = Message(0, sequence, move, NULL);
-                int32_t sent_bytes = net.send_message(&message);
-                if (sent_bytes == -1)
-                {
-                    perror("Error sending message");
-                    // TODO reenviar mensagem
-                }
-                else
-                {
-                    sequence++;
-                    map.print();
-                }
-                can_move = false; // Prevent further moves until ACK is received
+                returned_message = net.send_message(&message);
             }
             else
                 puts("Can't move in that direction. Try another one.");
-        }
-        else if (!can_move)
-        {
-            // Wait for ACK from server
-            Message *received_message = net.receive_message();
-            if (received_message)
+
+            switch (returned_message->type)
             {
-                bool found_treasure = false;
-                switch (received_message->type)
-                {
-                case ACK:
-                    printf("ACK received. You can move again.\n");
-                    can_move = true; // Allow player to move again
-                    break;
-                case NACK:
-                    printf("NACK received. Invalid message. Try again\n");
-                    // TODO voltar o movimento do jogador
-                    can_move = true; // Allow player to try again
-                    break;
-                default:
-                    puts("Found a treasure!");
-                    found_treasure = true;
-                }
-
-                if (found_treasure)
-                {
-                    // Obtém informações do tesouro
-                    switch (received_message->type)
-                    {
-                    case TXT_ACK_NAME:
-                    {
-                        std::string filename = std::string((char *)received_message->data);
-                        printf("Treasure filename: %s\n", filename.c_str());
-                        treasure = new Treasure(filename, true);
-                        break;
-                    }
-                    case DATA_SIZE:
-                    {
-                        if (treasure)
-                        {
-                            // Recebe o tamanho do tesouro
-                            uint64_t size = *((uint64_t *)received_message->data);
-                            treasure->size = size;
-                            treasure->data = new uint8_t[size];
-                            printf("Treasure size: %llu bytes\n", size);
-                        }
-                        break;
-                    }
-                    case DATA:
-                    {
-                        puts("Writing data...");
-                        uint8_t chunk_size = received_message->size;
-                        size_t writed = fwrite(received_message->data, 1, chunk_size, treasure->file);
-                        printf("Wrote %zu bytes to treasure file.\n", writed);
-                        break;
-                    }
-                    case END:
-                    {
-                        fclose(treasure->file);
-                        printf("Treasure %s received successfully!\n", treasure->filename.c_str());
-                        found_treasure = false;
-                        can_move = true; // Allow player to move again
-                        break;
-                    }
-                    }
-
-                    // Send ACK
-                    Message ack_message = Message(0, sequence, ACK, NULL);
-                    int32_t sent_bytes = net.send_message(&ack_message);
-                }
-
-                delete received_message;
+            case ACK:
+                printf("ACK received. You can move again.\n");
+                break;
+            case TXT_ACK_NAME:
+            case VID_ACK_NAME:
+            case IMG_ACK_NAME:
+                printf("Received a treasure message.\n");
+                puts("Found a treasure!");
+                found_treasure = true;
             }
         }
+
+        if (found_treasure)
+        {
+            if (!returned_message)
+                net.receive_message(returned_message, false);
+
+            // Obtém informações do tesouro
+            switch (returned_message->type)
+            {
+            case TXT_ACK_NAME:
+            case VID_ACK_NAME:
+            case IMG_ACK_NAME:
+            {
+                std::string filename = std::string((char *)returned_message->data);
+                printf("Treasure filename: %s\n", filename.c_str());
+                treasure = new Treasure(filename, true);
+                break;
+            }
+            case DATA_SIZE:
+            {
+                if (treasure)
+                {
+                    // Recebe o tamanho do tesouro
+                    uint64_t size = *((uint64_t *)returned_message->data);
+                    treasure->size = size;
+                    treasure->data = new uint8_t[size];
+                    printf("Treasure size: %llu bytes\n", size);
+                }
+                break;
+            }
+            case DATA:
+            {
+                puts("Writing data...");
+                uint8_t chunk_size = returned_message->size;
+                size_t writed = fwrite(returned_message->data, 1, chunk_size, treasure->file);
+                printf("Wrote %zu bytes to treasure file.\n", writed);
+                break;
+            }
+            case END:
+            {
+                fclose(treasure->file);
+                printf("Treasure %s received successfully!\n", treasure->filename.c_str());
+                found_treasure = false;
+                break;
+            }
+            }
+
+            // Send ACK
+            Message ack_message = Message(0, sequence, ACK, NULL);
+            net.send_message(&ack_message);
+        }
+
+        delete returned_message;
     }
     return 0;
 }
