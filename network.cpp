@@ -216,8 +216,15 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     }
     else if (sequence < other_sequence)
     {
+        fprintf(stderr, "Mensagem antiga recebida");
+
         // Mensagem antiga recebida, ignora
-        return error_type::OLD;
+        // Envia ACK denovo
+        my_sequence--;
+        Message *ack_message = new Message(0, my_sequence, ACK, NULL);
+        send_message(ack_message);
+        delete ack_message;
+        return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
     }
 
     uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits
