@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
     srand(0);
 
-    Network net = Network("enp2s0");
+    Network net = Network("enp0s31f6");
 
     Map map = Map(true); // Player mode
 
@@ -112,12 +112,28 @@ int main(int argc, char *argv[])
                     //Para descobrir que o arquivo é regular e o tamanho do arquivo, utilize a função stat. O tamanho do arquivo em bytes pode ser encontrado em st.st_size onde st é a estrutura stat.
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
+                    printf("Free space available: %lu bytes\n", st.f_bsize * st.f_bavail);
+                    uint64_t free_space = st.f_bsize * st.f_bavail + SIZE_TOLERANCE;
+
 
                     treasure->size = size;
+
+                    printf("File size %llu\n", size);
+
+                    if (size > free_space)
+                    {
+                        printf("Treasure size (%llu bytes) exceeds available space (%lu bytes). Sending TOO_BIG message.\n", size, free_space);
+                        Message too_big_message = Message(0, net.my_sequence, TOO_BIG, NULL);
+                        net.send_message(&too_big_message);
+                        found_treasure = false;
+                        continue;
+                        break;
+                    }
+                    
                     treasure->data = new uint8_t[size];
-#ifdef VERBOSE
+                    #ifdef VERBOSE
                     printf("Treasure size: %llu bytes\n", size);
-#endif
+                    #endif
                 }
                 break;
             }
