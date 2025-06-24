@@ -35,7 +35,7 @@ enum message_type
     UP,
     DOWN,
     LEFT,
-    UNKOWN2,
+    NON_REGULAR_ACK,
     ERROR
 };
 
