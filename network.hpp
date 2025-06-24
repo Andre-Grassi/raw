@@ -58,6 +58,7 @@ public:
     uint8_t *data;
 
     Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data);
+    ~Message();
 
     // Parity word checksum
     void calculate_checksum();
@@ -76,6 +77,7 @@ public:
     uint8_t my_sequence : 5;
     uint8_t other_sequence : 5;
     Network(char *my_interface_name);
+    ~Network();
 
     Message *send_message(Message *message);
     error_type receive_message(Message *&returned_message, bool is_waiting_response = false);

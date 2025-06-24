@@ -5,9 +5,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cstring>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "network.hpp"
-#include <sys/time.h>
 
 // usando long long pra (tentar) sobreviver ao ano 2038
 long long timestamp()
@@ -24,6 +25,15 @@ Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
     this->type = type;
     this->data = data;
     calculate_checksum();
+}
+
+Message::~Message()
+{
+    if (data)
+    {
+        delete[] data;
+        data = nullptr;
+    }
 }
 
 // Parity word checksum
@@ -84,6 +94,17 @@ Network::Network(char *my_interface_name)
     my_socket.interface_name = my_interface_name;
     my_sequence = 0;
     other_sequence = 0;
+}
+
+Network::~Network()
+{
+    if (my_socket.socket_fd != -1)
+    {
+        if (close(my_socket.socket_fd) == -1)
+            fprintf(stderr, "Erro ao fechar o socket\n");
+
+        my_socket.socket_fd = -1;
+    }
 }
 
 int32_t send_message_aux(Network *net, Message *message)
