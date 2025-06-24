@@ -50,7 +50,6 @@ Message::~Message()
 void Message::calculate_checksum()
 {
     checksum = 0;
-    checksum ^= start_delimiter;
     checksum ^= size;
     checksum ^= sequence;
     checksum ^= type;
