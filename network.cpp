@@ -56,7 +56,7 @@ int cria_raw_socket(char *nome_interface_rede)
     int soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (soquete == -1)
     {
-        fprintf(stderr, "Erro ao criar socket: Verifique se você é root!\n");
+        fprintf(stderr, "Error creating socket: Make sure you are running as root!\n");
         exit(-1);
     }
 
@@ -69,7 +69,7 @@ int cria_raw_socket(char *nome_interface_rede)
     // Inicializa socket
     if (bind(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1)
     {
-        fprintf(stderr, "Erro ao fazer bind no socket\n");
+        fprintf(stderr, "Error binding socket.\n");
         exit(-1);
     }
 
@@ -79,8 +79,7 @@ int cria_raw_socket(char *nome_interface_rede)
     // Não joga fora o que identifica como lixo: Modo promíscuo
     if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)
     {
-        fprintf(stderr, "Erro ao fazer setsockopt: "
-                        "Verifique se a interface de rede foi especificada corretamente.\n");
+        fprintf(stderr, "Error setting setsockopt: Check if the network interface was specified correctly.\n");
         exit(-1);
     }
 
@@ -100,7 +99,7 @@ Network::~Network()
     if (my_socket.socket_fd != -1)
     {
         if (close(my_socket.socket_fd) == -1)
-            fprintf(stderr, "Erro ao fechar o socket\n");
+            fprintf(stderr, "Error when closing socket.\n");
 
         my_socket.socket_fd = -1;
     }
@@ -213,7 +212,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
         if (is_waiting_response && elapsed_time > TIMEOUT_MS)
         {
 #ifdef VERBOSE
-            fprintf(stderr, "Tempo limite excedido ao esperar por resposta.\n");
+            fprintf(stderr, "Timed out while waiting for answer.\n");
 #endif
             return error_type::TIMED_OUT;
         }
@@ -248,7 +247,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 
     if (distance > 0) // received sequence > expected sequence
     {
-        fprintf(stderr, "Sequência inesperada: esperado %d, recebido %d\n", other_sequence, sequence);
+        fprintf(stderr, "Unexpected sequence: expected %d, received %d\n", other_sequence, sequence);
         delete[] received_package;
         if (is_waiting_response)
             return error_type::BROKEN;
@@ -264,7 +263,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     else if (distance < 0) // received sequence < expected sequence
     {
 #ifdef VERBOSE
-        fprintf(stderr, "Mensagem antiga recebida");
+        fprintf(stderr, "Old message received, ignoring...");
 #endif
 
         // Mensagem antiga recebida, ignora
@@ -352,7 +351,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     // Valida o checksum recebido com o calculado
     if (checksum_original != message->checksum)
     {
-        fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
+        fprintf(stderr, "Invalid checksum: expected %d, received %d\n", message->checksum, checksum_original);
         if (!is_waiting_response)
         {
             Message *nack_message = new Message(0, my_sequence, NACK, NULL);
