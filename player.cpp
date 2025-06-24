@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
-#include <unistd.h> // Para pathconf (opcional, mas comum com statvfs)
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
