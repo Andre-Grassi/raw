@@ -6,13 +6,13 @@
 #include <iostream>
 #include <sys/statvfs.h>
 #include <sys/stat.h>
-#include <unistd.h>     // Para pathconf (opcional, mas comum com statvfs)
+#include <unistd.h> // Para pathconf (opcional, mas comum com statvfs)
 
 int main(int argc, char *argv[])
 {
     srand(0);
 
-    Network net = Network("enp2s0");
+    Network net = Network("enp3s0");
 
     Map map = Map(true); // Player mode
 
@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
             do
             {
                 std::cin >> input;
-
 
                 is_valid_move = false;
 
@@ -70,7 +69,7 @@ int main(int argc, char *argv[])
                 if (!is_valid_move)
                     puts("Can't move in that direction. Try another one.");
             } while (!is_valid_move);
-            
+
             map.print();
             Message message = Message(0, net.my_sequence, move, NULL);
             returned_message = net.send_message(&message);
@@ -112,18 +111,18 @@ int main(int argc, char *argv[])
                 {
                     // Recebe o tamanho do tesouro
                     uint64_t size = *((uint64_t *)returned_message->data);
-                    
-                    //Para verificar quanto espaço livre uma máquina tem (lembre-se também de ter uma certa tolerância), use a função statvfs (utilizando como caminho, onde se pretende salvar os arquivos que forem recebidos). O espaço livre em bytes é dado por st.f_bsize * st.f_bavail, onde st é a estrutura statvfs.
-                    //Para descobrir que o arquivo é regular e o tamanho do arquivo, utilize a função stat. O tamanho do arquivo em bytes pode ser encontrado em st.st_size onde st é a estrutura stat.
+
+                    // Calcula o espaço livre disponível
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
                     printf("Free space available: %lu bytes\n", st.f_bsize * st.f_bavail);
                     uint64_t free_space = st.f_bsize * st.f_bavail + SIZE_TOLERANCE;
 
-
                     treasure->size = size;
 
-                    printf("File size %llu\n", size);
+#ifdef VERBOSE
+                    printf("Treasure size: %llu bytes\n", size);
+#endif
 
                     if (size > free_space)
                     {
@@ -139,11 +138,8 @@ int main(int argc, char *argv[])
                         }
                         continue;
                     }
-                    
+
                     treasure->data = new uint8_t[size];
-                    #ifdef VERBOSE
-                    printf("Treasure size: %llu bytes\n", size);
-                    #endif
                 }
                 break;
             }
@@ -158,17 +154,18 @@ int main(int argc, char *argv[])
                 for (size_t i = 0; i < chunk_size; i++)
                 {
                     buffer[j] = returned_message->data[i];
-                    if (returned_message->data[i] == 0x88 || returned_message->data[i] == 0x81)
-                    {
-                        i++; // Skip the next byte
-                    }
+
+                    // Se for byte proibido, pula o byte de stuffing
+                    if (returned_message->data[i] == FORBIDDEN_BYTE_1 || returned_message->data[i] == FORBIDDEN_BYTE_2)
+                        i++;
+
                     j++;
                 }
 
-                size_t writed = fwrite(buffer, 1, j, treasure->file);
+                size_t bytes_written = fwrite(buffer, 1, j, treasure->file);
                 delete[] buffer;
 #ifdef VERBOSE
-                printf("Wrote %zu bytes to treasure file.\n", writed);
+                printf("Wrote %zu bytes to treasure file.\n", bytes_written);
 #endif
                 break;
             }
