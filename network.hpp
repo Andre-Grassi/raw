@@ -15,6 +15,10 @@
 #define BROKEN_MESSAGE nullptr
 #define TIMED_OUT_MSG nullptr
 
+#define FORBIDDEN_BYTE_1 0x88
+#define FORBIDDEN_BYTE_2 0x81
+#define STUFFING_BYTE 0b11111111
+
 enum message_type
 {
     ACK,
