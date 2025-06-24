@@ -121,7 +121,7 @@ int main()
                     puts("All treasures found! Ending game.");
                     end = true;
                 }
-                
+
                 break;
             case DATA_SIZE:
             {
@@ -133,10 +133,6 @@ int main()
                     // Calcula o espaço livre disponível
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
-                    struct stat st2;
-                    stat(TREASURE_DIR, &st2);
-                    if (!(S_ISREG(st2.st_mode)))
-                        printf("não regular");
                         
 
 #ifdef VERBOSE
