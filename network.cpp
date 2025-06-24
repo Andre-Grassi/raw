@@ -10,8 +10,7 @@
 
 #include "network.hpp"
 
-// usando long long pra (tentar) sobreviver ao ano 2038
-long long timestamp()
+uint64_t timestamp()
 {
     struct timeval tp;
     gettimeofday(&tp, NULL);
@@ -170,6 +169,7 @@ Message *Network::send_message(Message *message)
 
         else if (message->type != ACK && message->type != NACK)
         {
+            // TODO faltando loop de timeout aqui???
             uint64_t comeco = timestamp();
             struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
             setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
@@ -202,13 +202,13 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     bool error;
     do
     {
-        long long comeco = timestamp();
+        uint64_t start = timestamp();
         struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
         setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
         received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
 
-        long long elapsed_time = timestamp() - comeco;
+        uint64_t elapsed_time = timestamp() - start;
 
         if (is_waiting_response && elapsed_time > TIMEOUT_MS)
         {
