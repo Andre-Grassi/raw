@@ -210,7 +210,10 @@ int main(int argc, char *argv[])
 
             // Envia mensagem de fim de transmissão
             Message end_message = Message(0, net.my_sequence, END, NULL);
-            net.send_message(&end_message);
+            Message *r = net.send_message(&end_message);
+            // A mensagem de retorno r é inútil, porém temos que
+            // desalocá-la para evitar leak
+            delete r;
 
             delete[] data_chunk;
             delete[] buffer;
