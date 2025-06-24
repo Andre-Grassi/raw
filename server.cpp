@@ -7,6 +7,7 @@
 #include <cmath>
 #include <string.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 // prefix não pode ter o path do diretório
 std::string find_file_with_prefix(const std::string &dir_path, const std::string &prefix)
@@ -119,104 +120,125 @@ int main()
             // a terminação é variável (pode ser .txt, .mp4 e .jpg)
             std::string name = find_file_with_prefix(TREASURE_DIR, prefix);
 
-            // Pega o sufixo do arquivo
+            std::string suffix = name.substr(name.find_last_of('.'));
 
-            Treasure *treasure = new Treasure(name, false);
-
-            // Size + 1 para incluir o terminador nulo
-            Message ack_treasure = Message(treasure->filename.size() + 1, net.my_sequence, TXT_ACK_NAME, treasure->filename_data);
-            net.send_message(&ack_treasure);
-
-            // Envia mensagem com o tamanho do arquivo
-            printf("ACK received. Sending treasure file size: %ld.\n", treasure->size);
-            Message size_message = Message((uint8_t)8, net.my_sequence, DATA_SIZE, (uint8_t *)&treasure->size);
-            Message *return_message = net.send_message(&size_message);
-
-            // Caso em que o tamanho do tesouro é maior que o espaço livre no
-            // cliente
-            if (return_message && return_message->type == TOO_BIG)
+            // Testa se o arquivo é regular ou não é dos tipos esperados
+            struct stat st;
+            if (stat(name.c_str(), &st) != 0 || !S_ISREG(st.st_mode) || 
+               (suffix != ".txt" && suffix != ".mp4" && suffix != ".jpg"))
             {
-                is_sending_treasure = false;
+                printf("Arquivo não regular ou não é do tipo esperado.\n");
+                Message non_reg_ack = Message(0, net.my_sequence, NON_REGULAR_ACK, NULL);
+                net.send_message(&non_reg_ack);
+            }
+            else 
+            {
+                Treasure *treasure = new Treasure(name, false);
 
-                // Envia ack
-                Message ack_message = Message(0, net.my_sequence, ACK, NULL);
-                net.send_message(&ack_message);
+                message_type ack_type;
 
-                // Checa se todos os tesouros foram encontrados
+                if (suffix == ".txt")
+                    ack_type = TXT_ACK_NAME;
+                else if (suffix == ".mp4")
+                    ack_type = VID_ACK_NAME;
+                else if (suffix == ".jpg")
+                    ack_type = IMG_ACK_NAME;
 
-                if (all_treasures_found(map.treasures))
+                // Size + 1 para incluir o terminador nulo
+                Message ack_treasure = Message(treasure->filename.size() + 1, net.my_sequence, ack_type, treasure->filename_data);
+                net.send_message(&ack_treasure);
+
+                // Envia mensagem com o tamanho do arquivo
+                printf("ACK received. Sending treasure file size: %ld.\n", treasure->size);
+                Message size_message = Message((uint8_t)8, net.my_sequence, DATA_SIZE, (uint8_t *)&treasure->size);
+                Message *return_message = net.send_message(&size_message);
+
+                // Caso em que o tamanho do tesouro é maior que o espaço livre no
+                // cliente
+                if (return_message && return_message->type == TOO_BIG)
                 {
-                    puts("All treasures found! Ending game.");
-                    end = true;
+                    is_sending_treasure = false;
+
+                    // Envia ack
+                    Message ack_message = Message(0, net.my_sequence, ACK, NULL);
+                    net.send_message(&ack_message);
+
+                    // Checa se todos os tesouros foram encontrados
+
+                    if (all_treasures_found(map.treasures))
+                    {
+                        puts("All treasures found! Ending game.");
+                        end = true;
+                    }
+
+                    delete treasure;
+                    continue;
                 }
 
-                delete treasure;
-                continue;
-            }
+                // Envia o arquivo do tesouro
+                puts("ACK received. Sending treasure file data...");
 
-            // Envia o arquivo do tesouro
-            puts("ACK received. Sending treasure file data...");
-
-            uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
-            // Copia treasure->data para buffer com o dobro do seu tamanho
-            uint64_t buffer_size = treasure->size * 2;
-            uint8_t *buffer = new uint8_t[buffer_size];
-            size_t j = 0;
-            uint64_t bytes_extras = 0;
-            for (size_t i = 0; i < treasure->size; i++)
-            {
-                buffer[j] = treasure->data[i];
-
-                if (treasure->data[i] == FORBIDDEN_BYTE_1 || treasure->data[i] == FORBIDDEN_BYTE_2)
+                uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
+                // Copia treasure->data para buffer com o dobro do seu tamanho
+                uint64_t buffer_size = treasure->size * 2;
+                uint8_t *buffer = new uint8_t[buffer_size];
+                size_t j = 0;
+                uint64_t bytes_extras = 0;
+                for (size_t i = 0; i < treasure->size; i++)
                 {
-                    if ((j % MAX_DATA_SIZE) == (MAX_DATA_SIZE - 1))
-                        bytes_extras++;
+                    buffer[j] = treasure->data[i];
 
+                    if (treasure->data[i] == FORBIDDEN_BYTE_1 || treasure->data[i] == FORBIDDEN_BYTE_2)
+                    {
+                        if ((j % MAX_DATA_SIZE) == (MAX_DATA_SIZE - 1))
+                            bytes_extras++;
+
+                        j++;
+                        buffer[j] = STUFFING_BYTE;
+                    }
                     j++;
-                    buffer[j] = STUFFING_BYTE;
                 }
-                j++;
-            }
 
-            buffer_size = j;
-            uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
-            size_t start_byte = 0;
+                buffer_size = j;
+                uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
+                size_t start_byte = 0;
 
-            for (size_t i = 0; i < num_messages; i++)
-            {
-                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
-
-                // Vê se o último byte é proibido
-                if (chunk_size == MAX_DATA_SIZE &&
-                    (buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
-                     buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_2))
+                for (size_t i = 0; i < num_messages; i++)
                 {
-                    // Deixa o byte proibido para a próxima mensagem
-                    chunk_size--;
+                    uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
+
+                    // Vê se o último byte é proibido
+                    if (chunk_size == MAX_DATA_SIZE &&
+                        (buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
+                        buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_2))
+                    {
+                        // Deixa o byte proibido para a próxima mensagem
+                        chunk_size--;
+                    }
+
+                    memcpy(data_chunk, buffer + start_byte, chunk_size);
+
+                    Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
+                    Message *r = net.send_message(&treasure_message);
+                    // A mensagem de retorno r é inútil, porém temos que
+                    // desalocá-la para evitar leak
+                    delete r;
+
+                    // Atualiza o próximo início de mensagem
+                    start_byte += chunk_size;
                 }
 
-                memcpy(data_chunk, buffer + start_byte, chunk_size);
-
-                Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
-                Message *r = net.send_message(&treasure_message);
+                // Envia mensagem de fim de transmissão
+                Message end_message = Message(0, net.my_sequence, END, NULL);
+                Message *r = net.send_message(&end_message);
                 // A mensagem de retorno r é inútil, porém temos que
                 // desalocá-la para evitar leak
                 delete r;
 
-                // Atualiza o próximo início de mensagem
-                start_byte += chunk_size;
+                delete[] data_chunk;
+                delete[] buffer;
+                delete treasure;
             }
-
-            // Envia mensagem de fim de transmissão
-            Message end_message = Message(0, net.my_sequence, END, NULL);
-            Message *r = net.send_message(&end_message);
-            // A mensagem de retorno r é inútil, porém temos que
-            // desalocá-la para evitar leak
-            delete r;
-
-            delete[] data_chunk;
-            delete[] buffer;
-            delete treasure;
 
             is_sending_treasure = false;
 
