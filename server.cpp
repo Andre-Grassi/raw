@@ -120,7 +120,14 @@ int main()
             // a terminação é variável (pode ser .txt, .mp4 e .jpg)
             std::string name = find_file_with_prefix(TREASURE_DIR, prefix);
 
-            std::string suffix = name.substr(name.find_last_of('.'));
+            // Tenta obter sufixo do arquivo
+            std::size_t pos = name.find_last_of('.');
+            std::string suffix;
+            if (pos != std::string::npos) {
+                suffix = name.substr(pos);
+            } else {
+                suffix = "";
+            }
 
             // Testa se o arquivo é regular ou não é dos tipos esperados
             struct stat st;
