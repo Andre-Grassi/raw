@@ -30,6 +30,21 @@ std::string find_file_with_prefix(const std::string &dir_path, const std::string
     throw std::runtime_error("No file found with prefix: " + prefix);
 }
 
+bool all_treasures_found(Treasure_Position *treasure_positions)
+{
+
+    bool all_found = true;
+    size_t i = 0;
+    while (i < NUM_TREASURES && all_found)
+    {
+        if (!treasure_positions[i].found)
+        {
+            all_found = false;
+        }
+        i++;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     srand((time(NULL)));
@@ -47,8 +62,6 @@ int main(int argc, char *argv[])
         uint8_t treasure_index;
         if (!is_sending_treasure)
         {
-            // Server logic: wait for player move
-
             Message *received_message;
             net.receive_message(received_message, false);
 
@@ -66,7 +79,8 @@ int main(int argc, char *argv[])
                 {
                     if (map.player_position == map.treasures[i].position && !(map.treasures[i].found))
                     {
-                        map.treasures[i].found = true; // Mark treasure as found
+                        // Marca o tesouro como encontrado
+                        map.treasures[i].found = true;
                         is_sending_treasure = true;
                         treasure_index = i;
                         printf("Player found a treasure at (%d, %d)!\n", map.treasures[i].position.x, map.treasures[i].position.y);
@@ -91,13 +105,12 @@ int main(int argc, char *argv[])
                 break;
             }
             }
-            received_message = nullptr;
 
             delete received_message;
+            received_message = nullptr;
         }
         if (is_sending_treasure)
         {
-            // Server logic: send treasure to player
             printf("Sending treasure to player...\n");
 
             // Obtém o nome do tesouro baseado no índice do tesouro encontrado
@@ -111,7 +124,7 @@ int main(int argc, char *argv[])
 
             Treasure *treasure = new Treasure(name, false);
 
-            // Size + 1 to include null terminator
+            // Size + 1 para incluir o terminador nulo
             Message ack_treasure = Message(treasure->filename.size() + 1, net.my_sequence, TXT_ACK_NAME, treasure->filename_data);
             net.send_message(&ack_treasure);
 
@@ -120,26 +133,19 @@ int main(int argc, char *argv[])
             Message size_message = Message((uint8_t)8, net.my_sequence, DATA_SIZE, (uint8_t *)&treasure->size);
             Message *return_message = net.send_message(&size_message);
 
+            // Caso em que o tamanho do tesouro é maior que o espaço livre no
+            // cliente
             if (return_message && return_message->type == TOO_BIG)
             {
-                is_sending_treasure = false; // Reset sending state
+                is_sending_treasure = false;
+
                 // Envia ack
-                Message ack_too_big = Message(0, net.my_sequence, ACK, NULL);
-                net.send_message(&ack_too_big);
+                Message ack_message = Message(0, net.my_sequence, ACK, NULL);
+                net.send_message(&ack_message);
 
                 // Checa se todos os tesouros foram encontrados
-                bool all_treasures_found = true;
-                size_t i = 0;
-                while (i < NUM_TREASURES && all_treasures_found)
-                {
-                    if (!map.treasures[i].found)
-                    {
-                        all_treasures_found = false;
-                    }
-                    i++;
-                }
 
-                if (all_treasures_found)
+                if (all_treasures_found(map.treasures))
                 {
                     puts("All treasures found! Ending game.");
                     end = true;
@@ -157,18 +163,17 @@ int main(int argc, char *argv[])
             uint64_t buffer_size = treasure->size * 2;
             uint8_t *buffer = new uint8_t[buffer_size];
             size_t j = 0;
-            long int bytes_proibidos = 0;
-            long int bytes_extras = 0;
+            uint64_t bytes_extras = 0;
             for (size_t i = 0; i < treasure->size; i++)
             {
-                if (treasure->data[i] == 0x88 || treasure->data[i] == 0x81)
+                if (treasure->data[i] == FORBIDDEN_BYTE_1 || treasure->data[i] == FORBIDDEN_BYTE_2)
                 {
-                    if (j % 127 == 126)
+                    if ((j % MAX_DATA_SIZE) == (MAX_DATA_SIZE - 1))
                         bytes_extras++;
 
                     buffer[j] = treasure->data[i];
                     j++;
-                    buffer[j] = 0b11111111;
+                    buffer[j] = STUFFING_BYTE;
                     j++;
                 }
                 else
@@ -182,14 +187,14 @@ int main(int argc, char *argv[])
             uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
             size_t inicio = 0;
 
-            for (int i = 0; i < num_messages; i++)
+            for (size_t i = 0; i < num_messages; i++)
             {
                 uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - inicio));
 
                 // Vê se o último byte é proibido
-                if (chunk_size == 127 &&
-                    (buffer[inicio + chunk_size - 1] == 0x81 ||
-                     buffer[inicio + chunk_size - 1] == 0x88))
+                if (chunk_size == MAX_DATA_SIZE &&
+                    (buffer[inicio + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
+                     buffer[inicio + chunk_size - 1] == FORBIDDEN_BYTE_2))
                 {
                     // Deixa o byte proibido para a próxima mensagem
                     chunk_size--;
@@ -211,21 +216,10 @@ int main(int argc, char *argv[])
             delete[] data_chunk;
             delete treasure;
 
-            is_sending_treasure = false; // Reset sending state
+            is_sending_treasure = false;
 
             // Checa se todos os tesouros foram encontrados
-            bool all_treasures_found = true;
-            size_t i = 0;
-            while (i < NUM_TREASURES && all_treasures_found)
-            {
-                if (!map.treasures[i].found)
-                {
-                    all_treasures_found = false;
-                }
-                i++;
-            }
-
-            if (all_treasures_found)
+            if (all_treasures_found(map.treasures))
             {
                 puts("All treasures found! Ending game.");
                 end = true;
