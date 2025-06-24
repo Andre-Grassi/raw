@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
                 }
                 else if (suffix == ".mp4")
                 {
-                    std::string command = "vlc \"" + treasure->filename + "\" 2>/dev/null";
+                    std::string command = "celluloid \"" + treasure->filename + "\" 2>/dev/null";
                     system(command.c_str());
                 }
                 else if (suffix == ".jpg")
