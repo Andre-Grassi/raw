@@ -57,13 +57,13 @@ void Map::print()
                 printf(" . ");
                 break;
             case PLAYER:
-                printf(" P ");
+                printf("\033[0;32m P \033[0m");
                 break;
             case VISITED:
                 printf(" V ");
                 break;
             case TREASURE:
-                printf(" T ");
+                printf("\033[0;33m T \033[0m");
                 break;
             }
             printf("|");
