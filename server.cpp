@@ -45,16 +45,15 @@ bool all_treasures_found(Treasure_Position *treasure_positions)
     return true;
 }
 
-int main(int argc, char *argv[])
+int main()
 {
     srand((time(NULL)));
 
-    Network net = Network("enp3s0");
+    Network net = Network("enp0s31f6");
 
     Map map = Map(false); // Server mode
 
     bool end = false;
-    bool can_move = true;
     bool is_sending_treasure = false;
     while (!end)
     {

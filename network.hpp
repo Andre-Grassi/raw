@@ -80,6 +80,9 @@ public:
     ~Network();
 
     Message *send_message(Message *message);
+    // Retorna no parâmetro returned_message a mensagem recebida.
+    // Se der timeout ou a mensagem estiver corrompida, returned_message 
+    // é null_ptr
     error_type receive_message(Message *&returned_message, bool is_waiting_response = false);
 };
 

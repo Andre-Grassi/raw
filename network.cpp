@@ -181,14 +181,8 @@ Message *Network::send_message(Message *message)
 
         else if (message->type != ACK && message->type != NACK)
         {
-            // TODO faltando loop de timeout aqui???
-            uint64_t comeco = timestamp();
-            struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
-            setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-
             error_type error_t = receive_message(return_message, true);
 
-            // TODO da pra reduzir pra só um if
             if (error_t == TIMED_OUT || error_t == BROKEN)
                 error = true;
             else if (return_message->type == NACK)

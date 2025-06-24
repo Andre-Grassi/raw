@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int main(int argc, char *argv[])
+int main()
 {
     srand(0);
 
@@ -127,11 +127,11 @@ int main(int argc, char *argv[])
 
                     treasure->size = size;
 
-                    printf("Treasure size: %llu bytes\n", size);
+                    printf("Treasure size: %lu bytes\n", size);
 
                     if (size > free_space)
                     {
-                        printf("Treasure size (%llu bytes) exceeds available space (%lu bytes). Sending TOO_BIG message.\n", size, free_space);
+                        printf("Treasure size (%lu bytes) exceeds available space (%lu bytes). Sending TOO_BIG message.\n", size, free_space);
                         Message too_big_message = Message(0, net.my_sequence, TOO_BIG, NULL);
                         net.send_message(&too_big_message);
                         found_treasure = false;
@@ -167,11 +167,14 @@ int main(int argc, char *argv[])
                     j++;
                 }
 
-                size_t bytes_written = fwrite(buffer, 1, j, treasure->file);
-                delete[] buffer;
 #ifdef VERBOSE
+                size_t bytes_written = fwrite(buffer, 1, j, treasure->file);
                 printf("Wrote %zu bytes to treasure file.\n", bytes_written);
+#else
+                fwrite(buffer, 1, j, treasure->file);
 #endif
+
+                delete[] buffer;
                 break;
             }
             case END:
