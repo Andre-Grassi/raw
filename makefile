@@ -5,6 +5,10 @@ MODULES = network game
 
 CFLAGS = -g -Wall -Wextra
 
+ifeq ($(VERBOSE),1)
+    CFLAGS += -DVERBOSE
+endif
+
 all: main
 
 main: player.o server.o object_files
