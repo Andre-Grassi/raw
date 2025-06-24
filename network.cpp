@@ -22,7 +22,18 @@ Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
     this->size = size;
     this->sequence = sequence;
     this->type = type;
-    this->data = data;
+
+    // Copia os dados
+    // Isso é necessário para pois ao deletar a mensagem, o ponteiro
+    // data poderia ser liberado sem querer
+    if (data)
+    {
+        this->data = new uint8_t[size];
+        std::memcpy(this->data, data, size);
+    }
+    else
+        this->data = nullptr;
+
     calculate_checksum();
 }
 
