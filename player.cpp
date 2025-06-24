@@ -175,6 +175,27 @@ int main(int argc, char *argv[])
                 printf("Treasure %s received successfully!\n", treasure->filename.c_str());
                 found_treasure = false;
 
+                // Obtém o sufixo do nome do tesouro e o abre conforme o tipo
+                std::string suffix = treasure->filename.substr(treasure->filename.find_last_of('.'));
+                if (suffix == ".txt")
+                {
+                    std::string command = "less \"" + treasure->filename + "\" 2>/dev/null";
+                    printf("Opening text file: %s\n", command.c_str());
+                    system(command.c_str());
+                }
+                else if (suffix == ".mp4")
+                {
+                    std::string command = "vlc \"" + treasure->filename + "\" 2>/dev/null";
+                    system(command.c_str());
+                }
+                else if (suffix == ".jpg")
+                {
+                    std::string command = "eog \"" + treasure->filename + "\" 2>/dev/null";
+                    system(command.c_str());
+                }
+                else
+                    printf("Unknown treasure type.\n");
+
                 // Checa se achou todos os tesouros
                 if (num_found_treasures == NUM_TREASURES)
                 {
