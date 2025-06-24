@@ -115,14 +115,14 @@ int main(int argc, char *argv[])
                     // Calcula o espaço livre disponível
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
+#ifdef VERBOSE
                     printf("Free space available: %lu bytes\n", st.f_bsize * st.f_bavail);
+#endif
                     uint64_t free_space = st.f_bsize * st.f_bavail + SIZE_TOLERANCE;
 
                     treasure->size = size;
 
-#ifdef VERBOSE
                     printf("Treasure size: %llu bytes\n", size);
-#endif
 
                     if (size > free_space)
                     {
