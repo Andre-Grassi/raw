@@ -32,17 +32,16 @@ std::string find_file_with_prefix(const std::string &dir_path, const std::string
 
 bool all_treasures_found(Treasure_Position *treasure_positions)
 {
-
-    bool all_found = true;
     size_t i = 0;
-    while (i < NUM_TREASURES && all_found)
+    while (i < NUM_TREASURES)
     {
         if (!treasure_positions[i].found)
-        {
-            all_found = false;
-        }
+            return false;
+
         i++;
     }
+
+    return true;
 }
 
 int main(int argc, char *argv[])
