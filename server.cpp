@@ -199,7 +199,10 @@ int main(int argc, char *argv[])
                 memcpy(data_chunk, buffer + start_byte, chunk_size);
 
                 Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
-                net.send_message(&treasure_message);
+                Message *r = net.send_message(&treasure_message);
+                // A mensagem de retorno r é inútil, porém temos que
+                // desalocá-la para evitar leak
+                delete r;
 
                 // Atualiza o próximo início de mensagem
                 start_byte += chunk_size;
