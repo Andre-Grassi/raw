@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
             }
             }
 
-            // Send ACK
+            // Envia ACK
             Message ack_message = Message(0, net.my_sequence, ACK, NULL);
             net.send_message(&ack_message);
         }
