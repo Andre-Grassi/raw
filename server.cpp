@@ -181,28 +181,28 @@ int main(int argc, char *argv[])
 
             buffer_size = j;
             uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
-            size_t inicio = 0;
+            size_t start_byte = 0;
 
             for (size_t i = 0; i < num_messages; i++)
             {
-                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - inicio));
+                uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
 
                 // Vê se o último byte é proibido
                 if (chunk_size == MAX_DATA_SIZE &&
-                    (buffer[inicio + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
-                     buffer[inicio + chunk_size - 1] == FORBIDDEN_BYTE_2))
+                    (buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
+                     buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_2))
                 {
                     // Deixa o byte proibido para a próxima mensagem
                     chunk_size--;
                 }
 
-                memcpy(data_chunk, buffer + inicio, chunk_size);
+                memcpy(data_chunk, buffer + start_byte, chunk_size);
 
                 Message treasure_message = Message(chunk_size, net.my_sequence, DATA, data_chunk);
                 net.send_message(&treasure_message);
 
                 // Atualiza o próximo início de mensagem
-                inicio += chunk_size;
+                start_byte += chunk_size;
             }
 
             // Envia mensagem de fim de transmissão
