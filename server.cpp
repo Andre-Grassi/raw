@@ -32,9 +32,9 @@ std::string find_file_with_prefix(const std::string &dir_path, const std::string
 
 int main(int argc, char *argv[])
 {
-    srand(0);
+    srand((time(NULL)));
 
-    Network net = Network("enp2s0");
+    Network net = Network("enp3s0");
 
     Map map = Map(false); // Server mode
 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
                 // Envia ack
                 Message ack_too_big = Message(0, net.my_sequence, ACK, NULL);
                 net.send_message(&ack_too_big);
-                
+
                 // Checa se todos os tesouros foram encontrados
                 bool all_treasures_found = true;
                 size_t i = 0;
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
                     puts("All treasures found! Ending game.");
                     end = true;
                 }
-                    
+
                 delete treasure;
                 continue;
             }
@@ -171,14 +171,15 @@ int main(int argc, char *argv[])
                     buffer[j] = 0b11111111;
                     j++;
                 }
-                else {
+                else
+                {
                     buffer[j] = treasure->data[i];
                     j++;
                 }
             }
-            
+
             buffer_size = j;
-            uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras)/ MAX_DATA_SIZE);
+            uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
             size_t inicio = 0;
 
             for (int i = 0; i < num_messages; i++)
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
                 }
                 i++;
             }
-            
+
             if (all_treasures_found)
             {
                 puts("All treasures found! Ending game.");
