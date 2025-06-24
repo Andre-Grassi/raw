@@ -166,21 +166,17 @@ int main(int argc, char *argv[])
             uint64_t bytes_extras = 0;
             for (size_t i = 0; i < treasure->size; i++)
             {
+                buffer[j] = treasure->data[i];
+
                 if (treasure->data[i] == FORBIDDEN_BYTE_1 || treasure->data[i] == FORBIDDEN_BYTE_2)
                 {
                     if ((j % MAX_DATA_SIZE) == (MAX_DATA_SIZE - 1))
                         bytes_extras++;
 
-                    buffer[j] = treasure->data[i];
                     j++;
                     buffer[j] = STUFFING_BYTE;
-                    j++;
                 }
-                else
-                {
-                    buffer[j] = treasure->data[i];
-                    j++;
-                }
+                j++;
             }
 
             buffer_size = j;
