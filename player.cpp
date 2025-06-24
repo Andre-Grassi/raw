@@ -12,7 +12,7 @@ int main()
 {
     srand(0);
 
-    Network net = Network("enp3s0");
+    Network net = Network("enp0s31f6");
 
     Map map = Map(true); // Player mode
 
@@ -86,6 +86,7 @@ int main()
             case TXT_ACK_NAME:
             case VID_ACK_NAME:
             case IMG_ACK_NAME:
+            case NON_REGULAR_ACK:
                 printf("Received a treasure message.\n");
                 puts("Found a treasure!");
                 found_treasure = true;
@@ -110,6 +111,18 @@ int main()
                 treasure = new Treasure(filename, true);
                 break;
             }
+            case NON_REGULAR_ACK:
+                printf("Received a non-regular treasure message.\n");
+                found_treasure = false;
+
+                // Checa se achou todos os tesouros
+                if (num_found_treasures == NUM_TREASURES)
+                {
+                    puts("All treasures found! Ending game.");
+                    end = true;
+                }
+                
+                break;
             case DATA_SIZE:
             {
                 if (treasure)
@@ -120,6 +133,12 @@ int main()
                     // Calcula o espaço livre disponível
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
+                    struct stat st2;
+                    stat(TREASURE_DIR, &st2);
+                    if (!(S_ISREG(st2.st_mode)))
+                        printf("não regular");
+                        
+
 #ifdef VERBOSE
                     printf("Free space available: %lu bytes\n", st.f_bsize * st.f_bavail);
 #endif
