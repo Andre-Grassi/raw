@@ -170,16 +170,14 @@ Message *Network::send_message(Message *message)
 
         else if (message->type != ACK && message->type != NACK)
         {
-            long long comeco = timestamp();
+            uint64_t comeco = timestamp();
             struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
             setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 
             error_type error_t = receive_message(return_message, true);
 
             if (error_t == TIMED_OUT || error_t == BROKEN)
-            {
                 error = true;
-            }
             else if (return_message->type == NACK)
             {
                 error = true;
@@ -270,7 +268,7 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 #endif
 
         // Mensagem antiga recebida, ignora
-        // Envia ACK denovo (e se a msg antiga for apenas duplicada e o outro já tem ACK?)(o problema realmente começa aqui? o server nn tem um problema antes no recebimento do ACK pra acabar reenviando a msg?)
+        // Envia ACK denovo
         my_sequence--;
         Message *ack_message = new Message(0, my_sequence, ACK, NULL);
         send_message(ack_message);
@@ -364,7 +362,6 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
         delete[] received_package;
         delete message;
         return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
-        // return error_type::BROKEN;
     }
 
     other_sequence++; // Atualiza a sequência do outro lado
