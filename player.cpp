@@ -70,6 +70,11 @@ int main(int argc, char *argv[])
                     puts("Can't move in that direction. Try another one.");
             } while (!is_valid_move);
 
+#ifndef VERBOSE
+            // Limpa a tela com chamada ao sistema
+            system("clear");
+#endif
+
             map.print();
             Message message = Message(0, net.my_sequence, move, NULL);
             returned_message = net.send_message(&message);
@@ -180,7 +185,6 @@ int main(int argc, char *argv[])
                 if (suffix == ".txt")
                 {
                     std::string command = "less \"" + treasure->filename + "\" 2>/dev/null";
-                    printf("Opening text file: %s\n", command.c_str());
                     system(command.c_str());
                 }
                 else if (suffix == ".mp4")
