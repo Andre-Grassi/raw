@@ -22,8 +22,9 @@ std::string find_file_with_prefix(const std::string &dir_path, const std::string
             continue; // Ignora "." e ".."
         if (strncmp(entry->d_name, prefix.c_str(), prefix.size()) == 0)
         {
+            std::string found_name = entry->d_name; // Copia antes de fechar
             closedir(dir);
-            return dir_path + "/" + entry->d_name;
+            return dir_path + "/" + found_name;
         }
     }
     closedir(dir);
@@ -209,6 +210,7 @@ int main(int argc, char *argv[])
             net.send_message(&end_message);
 
             delete[] data_chunk;
+            delete[] buffer;
             delete treasure;
 
             is_sending_treasure = false;

@@ -160,6 +160,8 @@ int32_t send_message_aux(Network *net, Message *message)
 
     sent_bytes = send(net->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
 
+    delete[] final_package;
+
     return sent_bytes;
 }
 
@@ -186,6 +188,7 @@ Message *Network::send_message(Message *message)
 
             error_type error_t = receive_message(return_message, true);
 
+            // TODO da pra reduzir pra só um if
             if (error_t == TIMED_OUT || error_t == BROKEN)
                 error = true;
             else if (return_message->type == NACK)
