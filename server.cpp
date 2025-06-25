@@ -218,7 +218,7 @@ int main()
                     uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
 
                     // Exibe progresso do envio
-                    printf("Sending... %.1f%%", ((float)i / (float)num_messages) * 100);
+                    printf("Sending... %lu/%u", i, num_messages);
 
                     // Vê se o último byte é proibido
                     if (chunk_size == MAX_DATA_SIZE &&
