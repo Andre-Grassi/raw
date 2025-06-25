@@ -188,12 +188,40 @@ int main()
                 // Envia o arquivo do tesouro
                 puts("ACK received. Sending treasure file data...");
 
-                uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
-                // Copia treasure->data para buffer com o dobro do seu tamanho
-                uint64_t buffer_size = treasure->size * 2;
-                uint8_t *buffer = new uint8_t[buffer_size];
                 size_t j = 0;
                 uint64_t bytes_extras = 0;
+                uint64_t buffer_size = 0;
+                // Calcula o tamanho do buffer necessário para armazenar os
+                // dados do tesouro, incluindo os bytes de stuffing
+                for (size_t i = 0; i < treasure->size; i++)
+                {
+                    if (treasure->data[i] == FORBIDDEN_BYTE_1 || treasure->data[i] == FORBIDDEN_BYTE_2)
+                    {
+                        if ((j % MAX_DATA_SIZE) == (MAX_DATA_SIZE - 1))
+                            bytes_extras++;
+
+                        j++;
+                    }
+                    j++;
+                }
+
+                buffer_size = j;
+                uint8_t *buffer = new uint8_t[buffer_size];
+
+                if (!buffer)
+                {
+                    fprintf(stderr, "Memory allocation failed for buffer.\n");
+                    Message too_big_message = Message(0, net.my_sequence, TOO_BIG, NULL);
+                    Message *r = net.send_message(&too_big_message);
+                    // A mensagem de retorno r é inútil, porém temos que
+                    // desalocá-la para evitar leak
+                    delete r;
+                    delete treasure;
+                }
+
+                j = 0;
+
+                // Copia treasure->data para buffer e adiciona stuffying bytes
                 for (size_t i = 0; i < treasure->size; i++)
                 {
                     buffer[j] = treasure->data[i];
@@ -209,7 +237,7 @@ int main()
                     j++;
                 }
 
-                buffer_size = j;
+                uint8_t *data_chunk = new uint8_t[MAX_DATA_SIZE];
                 uint32_t num_messages = std::ceil((double)(buffer_size + bytes_extras) / MAX_DATA_SIZE);
                 size_t start_byte = 0;
 
@@ -218,7 +246,7 @@ int main()
                     uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
 
                     // Exibe progresso do envio
-                    if (i % 20 == 0) // Atualiza a cada 20 mensagens
+                    if (i % 50 == 0) // Atualiza a cada 20 mensagens
                         printf("Sending... %.1f%%", ((float)i / (float)num_messages) * 100);
 
                     // Vê se o último byte é proibido
@@ -239,7 +267,7 @@ int main()
                     delete r;
 
                     // Apaga última linha de carregamento
-                    if (i % 20 == 0) // Atualiza a cada 20 mensagens
+                    if (i % 50 == 0) // Atualiza a cada 20 mensagens
                         printf("\r\033[2K");
 
                     // Atualiza o próximo início de mensagem

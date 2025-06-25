@@ -122,6 +122,9 @@ int main()
                     end = true;
                 }
 
+                delete treasure;
+                treasure = nullptr;
+
                 break;
             case DATA_SIZE:
             {
@@ -155,6 +158,10 @@ int main()
                             puts("All treasures found! Ending game.");
                             end = true;
                         }
+
+                        delete treasure;
+                        treasure = nullptr;
+
                         continue;
                     }
 
@@ -162,6 +169,21 @@ int main()
                 }
                 break;
             }
+            case TOO_BIG:
+                printf("Received TOO_BIG message. Treasure cannot be received.\n");
+                found_treasure = false;
+
+                // Checa se achou todos os tesouros
+                if (num_found_treasures == NUM_TREASURES)
+                {
+                    puts("All treasures found! Ending game.");
+                    end = true;
+                }
+
+                delete treasure;
+                treasure = nullptr;
+
+                break;
             case DATA:
             {
 #ifdef VERBOSE
@@ -223,6 +245,10 @@ int main()
                     puts("All treasures found! Ending game.");
                     end = true;
                 }
+
+                delete treasure;
+                treasure = nullptr;
+
                 break;
             }
             }
