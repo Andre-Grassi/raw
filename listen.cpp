@@ -1,51 +1,46 @@
-#include <arpa/inet.h>
-#include <net/ethernet.h>
-#include <linux/if_packet.h>
-#include <net/if.h>
-#include <stdlib.h>
+#include "network.hpp"
 #include <stdio.h>
+#include <string.h>
+#include <bitset>
+#include "game.hpp"
+#include <string>
+#include <iostream>
+#include <cmath>
+#include <dirent.h>
 
-int cria_raw_socket(char *nome_interface_rede)
+using std::bitset;
+
+std::string find_file_with_prefix(const std::string &dir_path, const std::string &prefix)
 {
-    // Cria arquivo para o socket sem qualquer protocolo
-    int soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    if (soquete == -1)
+    DIR *dir = opendir(dir_path.c_str());
+    if (!dir)
+        throw std::runtime_error("Could not open directory: " + dir_path);
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
     {
-        fprintf(stderr, "Erro ao criar socket: Verifique se você é root!\n");
-        exit(-1);
+        if (entry->d_name[0] == '.')
+            continue; // Ignora "." e ".."
+        if (strncmp(entry->d_name, prefix.c_str(), prefix.size()) == 0)
+        {
+            closedir(dir);
+            return dir_path + "/" + entry->d_name;
+        }
     }
-
-    int ifindex = if_nametoindex(nome_interface_rede);
-
-    struct sockaddr_ll endereco = {0};
-    endereco.sll_family = AF_PACKET;
-    endereco.sll_protocol = htons(ETH_P_ALL);
-    endereco.sll_ifindex = ifindex;
-    // Inicializa socket
-    if (connect(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1)
-    {
-        fprintf(stderr, "Erro ao fazer bind no socket\n");
-        exit(-1);
-    }
-
-    struct packet_mreq mr = {0};
-    mr.mr_ifindex = ifindex;
-    mr.mr_type = PACKET_MR_PROMISC;
-    // Não joga fora o que identifica como lixo: Modo promíscuo
-    if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)
-    {
-        fprintf(stderr, "Erro ao fazer setsockopt: "
-                        "Verifique se a interface de rede foi especificada corretamente.\n");
-        exit(-1);
-    }
-
-    return soquete;
+    closedir(dir);
+    throw std::runtime_error("No file found with prefix: " + prefix);
 }
 
 int main()
 {
-    int socket_number = cria_raw_socket("veth603c149");
-    int buffer_data[100] = {55, 99, 245, 2545254, 24525};
-    int retorno = recv(socket_number, buffer_data, sizeof(buffer_data), 0);
-    printf("Retorno do recv: %d\n", retorno);
+    int treasure_index = 0; // Index of the treasure to be sent
+    Network *net = new Network("enp2s0");
+
+    Message *received_message = nullptr;
+    error_type err = net->receive_message(received_message);
+    // Envia nack
+    net->send_message(new Message(0, net->my_sequence, NACK, NULL));
+
+    err = net->receive_message(received_message);
+    net->send_message(new Message(0, net->my_sequence, ACK, NULL));
 }

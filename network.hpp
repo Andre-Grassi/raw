@@ -10,15 +10,23 @@
 
 #define METADATA_SIZE 4
 #define MAX_DATA_SIZE 127
-#define VERBOSE
+#define TIMEOUT_MS 1000
+
+#define BROKEN_MESSAGE nullptr
+#define TIMED_OUT_MSG nullptr
+
+#define FORBIDDEN_BYTE_1 0x88
+#define FORBIDDEN_BYTE_2 0x81
+#define STUFFING_BYTE 0b11111111
 
 enum message_type
 {
     ACK,
     NACK,
     OK_ACK,
-    UNKNOWN,
+    TOO_BIG,
     DATA_SIZE,
+    DATA,
     TXT_ACK_NAME,
     VID_ACK_NAME,
     IMG_ACK_NAME,
@@ -27,8 +35,16 @@ enum message_type
     UP,
     DOWN,
     LEFT,
-    UNKOWN2,
+    NON_REGULAR_ACK,
     ERROR
+};
+
+enum error_type
+{
+    NO_ERROR,
+    BROKEN,
+    TIMED_OUT,
+    OLD
 };
 
 class Message
@@ -42,6 +58,7 @@ public:
     uint8_t *data;
 
     Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data);
+    ~Message();
 
     // Parity word checksum
     void calculate_checksum();
@@ -57,12 +74,16 @@ public:
     };
 
     socket my_socket;
-    socket other_socket;
+    uint8_t my_sequence : 5;
+    uint8_t other_sequence : 5;
+    Network();
+    ~Network();
 
-    Network(char *my_interface_name, char *other_interface_name);
-
-    int32_t send_message(Message *message);
-    Message *receive_message();
+    Message *send_message(Message *message);
+    // Retorna no parâmetro returned_message a mensagem recebida.
+    // Se der timeout ou a mensagem estiver corrompida, returned_message
+    // é null_ptr
+    error_type receive_message(Message *&returned_message, bool is_waiting_response = false);
 };
 
 #endif

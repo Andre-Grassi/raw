@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     else
         is_player = false;
 
-    Network net = Network("vethad51af4", "vethad51af4");
+    Network net = Network("enp2s0", "enp2s0");
 
     Map map = Map(is_player);
 
@@ -96,12 +96,19 @@ int main(int argc, char *argv[])
                 Message message = Message(0, sequence, move, NULL);
                 int32_t sent_bytes = net.send_message(&message);
                 if (sent_bytes == -1)
+                {
                     perror("Error sending message");
+                    // TODO reenviar mensagem
+                }
                 else
+                {
                     sequence++;
-
+                    map.print();
+                }
                 can_move = false; // Prevent further moves until ACK is received
             }
+            else
+                puts("Can't move in that direction. Try another one.");
         }
         else if (is_player && !can_move)
         {
@@ -155,6 +162,7 @@ int main(int argc, char *argv[])
                     break;
                 }
                 }
+                received_message = nullptr;
 
                 delete received_message;
             }

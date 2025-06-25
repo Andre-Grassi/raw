@@ -5,23 +5,78 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <cstring>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "network.hpp"
+
+uint64_t timestamp()
+{
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
+bool get_ethernet_interface(char *iface, size_t iface_size)
+{
+    iface[0] = '\0';
+    FILE *fp = popen("ip link show", "r");
+    if (!fp)
+        return false;
+
+    char line[256];
+    while (fgets(line, sizeof(line), fp))
+    {
+        int idx;
+        char name[128];
+        if (sscanf(line, "%d: %127[^:]:", &idx, name) == 2)
+        {
+            if (name[0] == 'e')
+            {
+                strncpy(iface, name, iface_size - 1);
+                iface[iface_size - 1] = '\0';
+                pclose(fp);
+                return true;
+            }
+        }
+    }
+    pclose(fp);
+    return false;
+}
 
 Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
 {
     this->size = size;
     this->sequence = sequence;
     this->type = type;
-    this->data = data;
+
+    // Copia os dados
+    // Isso é necessário para pois ao deletar a mensagem, o ponteiro
+    // data poderia ser liberado sem querer
+    if (data)
+    {
+        this->data = new uint8_t[size];
+        std::memcpy(this->data, data, size);
+    }
+    else
+        this->data = nullptr;
+
     calculate_checksum();
+}
+
+Message::~Message()
+{
+    if (data)
+    {
+        delete[] data;
+        data = nullptr;
+    }
 }
 
 // Parity word checksum
 void Message::calculate_checksum()
 {
     checksum = 0;
-    checksum ^= start_delimiter;
     checksum ^= size;
     checksum ^= sequence;
     checksum ^= type;
@@ -38,7 +93,7 @@ int cria_raw_socket(char *nome_interface_rede)
     int soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (soquete == -1)
     {
-        fprintf(stderr, "Erro ao criar socket: Verifique se você é root!\n");
+        fprintf(stderr, "Error creating socket: Make sure you are running as root!\n");
         exit(-1);
     }
 
@@ -51,7 +106,7 @@ int cria_raw_socket(char *nome_interface_rede)
     // Inicializa socket
     if (bind(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1)
     {
-        fprintf(stderr, "Erro ao fazer bind no socket\n");
+        fprintf(stderr, "Error binding socket.\n");
         exit(-1);
     }
 
@@ -61,25 +116,45 @@ int cria_raw_socket(char *nome_interface_rede)
     // Não joga fora o que identifica como lixo: Modo promíscuo
     if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)
     {
-        fprintf(stderr, "Erro ao fazer setsockopt: "
-                        "Verifique se a interface de rede foi especificada corretamente.\n");
+        fprintf(stderr, "Error setting setsockopt: Check if the network interface was specified correctly.\n");
         exit(-1);
     }
 
     return soquete;
 }
 
-Network::Network(char *my_interface_name, char *other_interface_name)
+Network::Network()
 {
-    my_socket.socket_fd = cria_raw_socket(my_interface_name);
-    my_socket.interface_name = my_interface_name;
+    char iface[128];
+    bool has_iface = get_ethernet_interface(iface, sizeof(iface));
 
-    other_socket.socket_fd = cria_raw_socket(other_interface_name);
-    other_socket.interface_name = other_interface_name;
+    if (!has_iface)
+    {
+        fprintf(stderr, "No Ethernet interface found starting with 'e'.\n");
+        exit(-1);
+    }
+
+    my_socket.socket_fd = cria_raw_socket(iface);
+    my_socket.interface_name = iface;
+    my_sequence = 0;
+    other_sequence = 0;
 }
 
-int32_t Network::send_message(Message *message)
+Network::~Network()
 {
+    if (my_socket.socket_fd != -1)
+    {
+        if (close(my_socket.socket_fd) == -1)
+            fprintf(stderr, "Error when closing socket.\n");
+
+        my_socket.socket_fd = -1;
+    }
+}
+
+int32_t send_message_aux(Network *net, Message *message)
+{
+    int32_t sent_bytes = -1;
+
     uint32_t metadata_package = 0;
 
     metadata_package |= (uint32_t)message->start_delimiter;
@@ -104,6 +179,7 @@ int32_t Network::send_message(Message *message)
     }
 
 #ifdef VERBOSE
+    puts("Sending message:");
     // Imprime os bits do pacote final
     for (size_t i = 0; i < (uint8_t)(METADATA_SIZE + message->size); i++)
     {
@@ -114,44 +190,134 @@ int32_t Network::send_message(Message *message)
         }
         printf("\n");
     }
+    puts("");
 #endif
 
-    int32_t sent_bytes = send(this->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
+    sent_bytes = send(net->my_socket.socket_fd, final_package, METADATA_SIZE + message->size + 10, 0);
+
+    delete[] final_package;
 
     return sent_bytes;
 }
 
-Message *Network::receive_message()
+Message *Network::send_message(Message *message)
+{
+    int32_t sent_bytes = -1;
+    Message *return_message = nullptr;
+    bool error = false;
+    do
+    {
+        error = false;
+
+        sent_bytes = send_message_aux(this, message);
+
+        if (sent_bytes == -1)
+            error = true;
+
+        else if (message->type != ACK && message->type != NACK)
+        {
+            error_type error_t = receive_message(return_message, true);
+
+            if (error_t == TIMED_OUT || error_t == BROKEN)
+                error = true;
+            else if (return_message->type == NACK)
+            {
+                error = true;
+                delete return_message;
+                return_message = nullptr;
+            }
+        }
+    } while (error);
+
+    my_sequence++;
+    return return_message;
+}
+
+error_type Network::receive_message(Message *&returned_message, bool is_waiting_response)
 {
     uint8_t *received_package = new uint8_t[METADATA_SIZE + MAX_DATA_SIZE + 10];
+    ssize_t received_bytes;
+    uint8_t start_delimiter;
+    uint32_t metadata_package;
 
-    ssize_t received_bytes = recv(this->other_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
-
-    if (received_bytes < 0)
+    // Espera até receber um pacote com tamanho mínimo e início válido
+    bool error;
+    do
     {
-        perror("Erro ao receber mensagem");
+        uint64_t start = timestamp();
+        struct timeval timeout = {.tv_sec = TIMEOUT_MS / 1000, .tv_usec = (TIMEOUT_MS % 1000) * 1000};
+        setsockopt(my_socket.socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
+        received_bytes = recv(this->my_socket.socket_fd, received_package, METADATA_SIZE + MAX_DATA_SIZE + 10, 0);
+
+        uint64_t elapsed_time = timestamp() - start;
+
+        if (is_waiting_response && elapsed_time > TIMEOUT_MS)
+        {
+#ifdef VERBOSE
+            fprintf(stderr, "Timed out while waiting for answer.\n");
+#endif
+            return error_type::TIMED_OUT;
+        }
+
+#ifdef VERBOSE
+        printf("Received bytes: %zd\n", received_bytes);
+#endif
+        if (received_bytes >= METADATA_SIZE)
+        {
+            // Extrai os metadados do pacote recebido
+            metadata_package = 0;
+
+            for (size_t i = 0; i < METADATA_SIZE; i++)
+            {
+                metadata_package |= (received_package[i] << (i * 8));
+            }
+
+            start_delimiter = metadata_package & 0xFF;
+        }
+
+        error = (received_bytes < METADATA_SIZE || start_delimiter != 0b01111110);
+    } while (error);
+
+    uint8_t size = (metadata_package >> 8) & 0x7F;      // 7 bits
+    uint8_t sequence = (metadata_package >> 15) & 0x1F; // 5 bits
+
+    // Checa se é a sequência esperada
+
+    uint8_t i1 = sequence;
+    uint8_t i2 = other_sequence;
+    int8_t distance = (signed)((i1 << 3) - (i2 << 3));
+
+    if (distance > 0) // received sequence > expected sequence
+    {
+        fprintf(stderr, "Unexpected sequence: expected %d, received %d\n", other_sequence, sequence);
         delete[] received_package;
-        return nullptr;
+        if (is_waiting_response)
+            return error_type::BROKEN;
+        else
+        {
+            Message *nack_message = new Message(0, my_sequence, NACK, NULL);
+            send_message(nack_message);
+            delete nack_message;
+            return receive_message(returned_message, false); // Chama novamente para receber a mensagem de volta
+        }
     }
 
-    if (received_bytes < METADATA_SIZE)
+    else if (distance < 0) // received sequence < expected sequence
     {
-        fprintf(stderr, "Pacote recebido incompleto.\n");
-        delete[] received_package;
-        return nullptr;
+#ifdef VERBOSE
+        fprintf(stderr, "Old message received, ignoring...");
+#endif
+
+        // Mensagem antiga recebida, ignora
+        // Envia ACK denovo
+        my_sequence--;
+        Message *ack_message = new Message(0, my_sequence, ACK, NULL);
+        send_message(ack_message);
+        delete ack_message;
+        return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
     }
 
-    // Extrai os metadados do pacote recebido
-    uint32_t metadata_package = 0;
-
-    for (size_t i = 0; i < METADATA_SIZE; i++)
-    {
-        metadata_package |= (received_package[i] << (i * 8));
-    }
-
-    uint8_t start_delimiter = metadata_package & 0xFF;
-    uint8_t size = (metadata_package >> 8) & 0x7F;               // 7 bits
-    uint8_t sequence = (metadata_package >> 15) & 0x1F;          // 5 bits
     uint8_t type = (metadata_package >> 20) & 0x0F;              // 4 bits
     uint8_t checksum_original = (metadata_package >> 24) & 0xFF; // 8 bits
 
@@ -163,6 +329,7 @@ Message *Network::receive_message()
 
     // Imprime os bits do metadata_package
 #ifdef VERBOSE
+    puts("Received message:");
     printf("Metadata Package: ");
     for (int i = 0; i < 32; i++)
     {
@@ -227,11 +394,24 @@ Message *Network::receive_message()
     // Valida o checksum recebido com o calculado
     if (checksum_original != message->checksum)
     {
-        fprintf(stderr, "Checksum inválido: esperado %d, recebido %d\n", message->checksum, checksum_original);
+        fprintf(stderr, "Invalid checksum: expected %d, received %d\n", message->checksum, checksum_original);
+        if (!is_waiting_response)
+        {
+            Message *nack_message = new Message(0, my_sequence, NACK, NULL);
+            send_message(nack_message);
+            delete nack_message;
+        }
         delete[] received_package;
         delete message;
-        return nullptr; // Retorna nullptr se o checksum não bater
+        return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
     }
 
-    return message;
+    other_sequence++; // Atualiza a sequência do outro lado
+
+    returned_message = message; // Atribui a mensagem recebida ao ponteiro passado
+
+    // Libera o buffer de recebimento
+    delete[] received_package;
+
+    return error_type::NO_ERROR; // Retorna a mensagem recebida com sucesso
 }

@@ -13,6 +13,11 @@ Coordinate::Coordinate()
     this->y = 0;
 }
 
+bool Coordinate::operator==(const Coordinate &other) const
+{
+    return (this->x == other.x && this->y == other.y);
+}
+
 Map::Map(bool is_player)
 {
     // Inicializa grid com EMPTY
@@ -33,7 +38,8 @@ Map::Map(bool is_player)
                 y = rand() % GRID_SIDE;
             } while (grid[x][y] != EMPTY); // Garante que a posição esteja vazia
 
-            treasures[i] = Coordinate(x, y);
+            treasures[i].position = Coordinate(x, y);
+            treasures[i].found = false;
             grid[x][y] = TREASURE;
         }
     }
@@ -51,13 +57,13 @@ void Map::print()
                 printf(" . ");
                 break;
             case PLAYER:
-                printf(" P ");
+                printf("\033[0;32m P \033[0m");
                 break;
             case VISITED:
                 printf(" V ");
                 break;
             case TREASURE:
-                printf(" T ");
+                printf("\033[0;33m T \033[0m");
                 break;
             }
             printf("|");
@@ -113,4 +119,42 @@ bool Map::move_player(message_type movement)
     }
 
     return false;
+}
+
+Treasure::Treasure(const std::string &name, bool write)
+{
+    this->filename = name;
+
+    this->filename_data = new uint8_t[name.size() + 1];
+    // Inicializa filename_data com \0
+    std::fill_n(filename_data, name.size(), 0);
+    std::copy(filename.begin(), filename.end(), filename_data);
+    // Coloca terminação nula
+    filename_data[name.size()] = '\0';
+
+    std::string mode = write ? "wb" : "rb";
+    this->file = fopen(filename.c_str(), mode.c_str());
+
+    if (!this->file)
+    {
+        perror("Error opening treasure file");
+    }
+
+    if (!write)
+    {
+        fseek(file, 0, SEEK_END);
+        this->size = ftell(file);
+
+        this->data = new uint8_t[this->size];
+        fseek(file, 0, SEEK_SET);
+        fread(this->data, 1, this->size, this->file);
+    }
+}
+
+Treasure::~Treasure()
+{
+    if (file)
+        fclose(file);
+    delete[] filename_data;
+    delete[] data;
 }
