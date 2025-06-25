@@ -17,6 +17,33 @@ uint64_t timestamp()
     return tp.tv_sec * 1000 + tp.tv_usec / 1000;
 }
 
+bool get_ethernet_interface(char *iface, size_t iface_size)
+{
+    iface[0] = '\0';
+    FILE *fp = popen("ip link show", "r");
+    if (!fp)
+        return false;
+
+    char line[256];
+    while (fgets(line, sizeof(line), fp))
+    {
+        int idx;
+        char name[128];
+        if (sscanf(line, "%d: %127[^:]:", &idx, name) == 2)
+        {
+            if (name[0] == 'e')
+            {
+                strncpy(iface, name, iface_size - 1);
+                iface[iface_size - 1] = '\0';
+                pclose(fp);
+                return true;
+            }
+        }
+    }
+    pclose(fp);
+    return false;
+}
+
 Message::Message(uint8_t size, uint8_t sequence, uint8_t type, uint8_t *data)
 {
     this->size = size;
@@ -96,10 +123,19 @@ int cria_raw_socket(char *nome_interface_rede)
     return soquete;
 }
 
-Network::Network(char *my_interface_name)
+Network::Network()
 {
-    my_socket.socket_fd = cria_raw_socket(my_interface_name);
-    my_socket.interface_name = my_interface_name;
+    char iface[128];
+    bool has_iface = get_ethernet_interface(iface, sizeof(iface));
+
+    if (!has_iface)
+    {
+        fprintf(stderr, "No Ethernet interface found starting with 'e'.\n");
+        exit(-1);
+    }
+
+    my_socket.socket_fd = cria_raw_socket(iface);
+    my_socket.interface_name = iface;
     my_sequence = 0;
     other_sequence = 0;
 }

@@ -12,7 +12,7 @@ int main()
 {
     srand(0);
 
-    Network net = Network("enp0s31f6");
+    Network net = Network();
 
     Map map = Map(true); // Player mode
 
@@ -133,7 +133,6 @@ int main()
                     // Calcula o espaço livre disponível
                     struct statvfs st;
                     statvfs(TREASURE_DIR, &st);
-                        
 
 #ifdef VERBOSE
                     printf("Free space available: %lu bytes\n", st.f_bsize * st.f_bavail);

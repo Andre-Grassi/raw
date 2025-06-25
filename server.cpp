@@ -50,7 +50,7 @@ int main()
 {
     srand((time(NULL)));
 
-    Network net = Network("enp0s31f6");
+    Network net = Network();
 
     Map map = Map(false); // Server mode
 
@@ -123,22 +123,25 @@ int main()
             // Tenta obter sufixo do arquivo
             std::size_t pos = name.find_last_of('.');
             std::string suffix;
-            if (pos != std::string::npos) {
+            if (pos != std::string::npos)
+            {
                 suffix = name.substr(pos);
-            } else {
+            }
+            else
+            {
                 suffix = "";
             }
 
             // Testa se o arquivo é regular ou não é dos tipos esperados
             struct stat st;
-            if (stat(name.c_str(), &st) != 0 || !S_ISREG(st.st_mode) || 
-               (suffix != ".txt" && suffix != ".mp4" && suffix != ".jpg"))
+            if (stat(name.c_str(), &st) != 0 || !S_ISREG(st.st_mode) ||
+                (suffix != ".txt" && suffix != ".mp4" && suffix != ".jpg"))
             {
                 printf("Arquivo não regular ou não é do tipo esperado.\n");
                 Message non_reg_ack = Message(0, net.my_sequence, NON_REGULAR_ACK, NULL);
                 net.send_message(&non_reg_ack);
             }
-            else 
+            else
             {
                 Treasure *treasure = new Treasure(name, false);
 
@@ -217,7 +220,7 @@ int main()
                     // Vê se o último byte é proibido
                     if (chunk_size == MAX_DATA_SIZE &&
                         (buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
-                        buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_2))
+                         buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_2))
                     {
                         // Deixa o byte proibido para a próxima mensagem
                         chunk_size--;
