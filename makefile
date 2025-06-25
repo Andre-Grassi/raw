@@ -24,9 +24,5 @@ server.o: server.cpp
 object_files: $(MODULES:=.cpp) $(MODULES:=.hpp)
 	g++ -c $(CFLAGS) $(MODULES:=.cpp)
 
-send_listen: object_files
-	g++ -g send.cpp $(MODULES:=.o) $(LIB) -o send
-	g++ -g listen.cpp $(MODULES:=.o) $(LIB) -o listen
-
 clean:
-	rm -f *.o player server send listen objetos/* 
+	rm -f *.o player server objetos/* 
