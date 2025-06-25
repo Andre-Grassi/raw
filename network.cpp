@@ -7,7 +7,6 @@
 #include <cstring>
 #include <sys/time.h>
 #include <unistd.h>
-#define VERBOSE
 #include "network.hpp"
 
 uint64_t timestamp()
@@ -311,9 +310,9 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 
         // Mensagem antiga recebida, ignora
         // Envia ACK denovo
-        my_sequence--;
         if (is_waiting_response)
             return error_type::TIMED_OUT;
+        my_sequence--;
         Message *ack_message = new Message(0, my_sequence, ACK, NULL);
         send_message(ack_message);
         delete ack_message;
