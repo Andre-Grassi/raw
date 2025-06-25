@@ -217,7 +217,7 @@ Message *Network::send_message(Message *message)
         {
             error_type error_t = receive_message(return_message, true);
 
-            if (error_t == TIMED_OUT || error_t == BROKEN)
+            if (error_t == TIMED_OUT || error_t == BROKEN || error_t == OLD)
                 error = true;
             else if (return_message->type == NACK)
             {
@@ -307,12 +307,16 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 #ifdef VERBOSE
         fprintf(stderr, "Old message received, ignoring...");
 #endif
-
         // Mensagem antiga recebida, ignora
-        // Envia ACK denovo
+
+        // Se tiver enviado uma mensagem e estiver esperando resposta, retorna
+        // erro OLD, para voltar ao send e reenviar a mensagem correta
         if (is_waiting_response)
-            return error_type::TIMED_OUT;
-        my_sequence--;
+            return error_type::OLD;
+
+        // Reenvia ACK, pois se não está esperando resposta, é porque deve
+        // responder com ACK
+        my_sequence--; // Subtrai 1 pois vai reenviar um ACK antigo
         Message *ack_message = new Message(0, my_sequence, ACK, NULL);
         send_message(ack_message);
         delete ack_message;
