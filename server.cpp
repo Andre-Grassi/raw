@@ -217,9 +217,6 @@ int main()
                 {
                     uint8_t chunk_size = std::min((size_t)MAX_DATA_SIZE, (size_t)(buffer_size - start_byte));
 
-                    // Exibe progresso do envio
-                    printf("Sending... %lu/%u", i, num_messages);
-
                     // Vê se o último byte é proibido
                     if (chunk_size == MAX_DATA_SIZE &&
                         (buffer[start_byte + chunk_size - 1] == FORBIDDEN_BYTE_1 ||
@@ -236,9 +233,6 @@ int main()
                     // A mensagem de retorno r é inútil, porém temos que
                     // desalocá-la para evitar leak
                     delete r;
-
-                    // Apaga última linha de carregamento
-                    printf("\r\033[2K");
 
                     // Atualiza o próximo início de mensagem
                     start_byte += chunk_size;
