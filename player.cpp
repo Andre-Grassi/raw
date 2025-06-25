@@ -215,7 +215,6 @@ int main()
             }
             case END:
             {
-                fclose(treasure->file);
                 printf("Treasure %s received successfully!\n", treasure->filename.c_str());
                 found_treasure = false;
 
