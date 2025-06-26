@@ -162,6 +162,8 @@ int main()
                         delete treasure;
                         treasure = nullptr;
 
+                        delete returned_message;
+
                         continue;
                     }
 

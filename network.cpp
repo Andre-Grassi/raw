@@ -399,6 +399,8 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     // Cria e retorna a mensagem recebida
     Message *message = new Message(size, sequence, type, data);
 
+    delete[] data; // Libera o buffer de dados pois foi copiado para a mensagem
+
     // Valida o checksum recebido com o calculado
     if (checksum_original != message->checksum)
     {
