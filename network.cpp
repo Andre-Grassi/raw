@@ -256,6 +256,9 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
 #ifdef VERBOSE
             fprintf(stderr, "Timed out while waiting for answer.\n");
 #endif
+
+            delete[] received_package;
+
             return error_type::TIMED_OUT;
         }
 

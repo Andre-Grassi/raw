@@ -156,7 +156,8 @@ int main()
 
                 // Size + 1 para incluir o terminador nulo
                 Message ack_treasure = Message(treasure->filename.size() + 1, net.my_sequence, ack_type, treasure->filename_data);
-                net.send_message(&ack_treasure);
+                Message *ret = net.send_message(&ack_treasure);
+                delete ret;
 
                 // Envia mensagem com o tamanho do arquivo
                 printf("ACK received. Sending treasure file size: %ld.\n", treasure->size);
