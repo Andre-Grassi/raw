@@ -293,7 +293,9 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
     if (distance > 0) // received sequence > expected sequence
     {
         fprintf(stderr, "Unexpected sequence: expected %d, received %d\n", other_sequence, sequence);
+        
         delete[] received_package;
+
         if (is_waiting_response)
             return error_type::BROKEN;
         else
@@ -322,7 +324,9 @@ error_type Network::receive_message(Message *&returned_message, bool is_waiting_
         my_sequence--; // Subtrai 1 pois vai reenviar um ACK antigo
         Message *ack_message = new Message(0, my_sequence, ACK, NULL);
         send_message(ack_message);
+
         delete ack_message;
+        delete[] received_package;
         return receive_message(returned_message, false); // Chama novamente para receber a próxima mensagem
     }
 
